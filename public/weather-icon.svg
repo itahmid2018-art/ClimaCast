@@ -1,0 +1,52 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#217af4"/>
+      <stop offset="50%" stop-color="#1a73e8"/>
+      <stop offset="100%" stop-color="#1256b8"/>
+    </linearGradient>
+    <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="40%" stop-color="#fbbc04"/>
+      <stop offset="100%" stop-color="#ea4335"/>
+    </linearGradient>
+    <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e8f0fe"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#0d47a1" flood-opacity="0.35"/>
+    </filter>
+    <filter id="cloudShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0f3b7d" flood-opacity="0.25"/>
+    </filter>
+    <filter id="sunGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- App Icon Base Squircle -->
+  <rect width="512" height="512" rx="124" fill="url(#bgGrad)" filter="url(#shadow)"/>
+
+  <!-- Subtle specular highlight arc -->
+  <path d="M0 124 C 0 55, 55 0, 124 0 L 388 0 C 457 0, 512 55, 512 124 C 512 70, 420 30, 256 30 C 92 30, 0 70, 0 124 Z" fill="#ffffff" opacity="0.12"/>
+
+  <!-- Warm Glowing Sun -->
+  <circle cx="320" cy="205" r="92" fill="url(#sunGrad)" filter="url(#sunGlow)"/>
+
+  <!-- Secondary Sun Radiance -->
+  <circle cx="320" cy="205" r="108" fill="#fbbc04" opacity="0.18"/>
+
+  <!-- Volumetric Google Material Cloud -->
+  <g filter="url(#cloudShadow)">
+    <path d="M 350 355 
+             L 182 355 
+             A 72 72 0 0 1 170 212 
+             A 94 94 0 0 1 346 226 
+             A 64 64 0 0 1 350 355 Z" 
+          fill="url(#cloudGrad)"/>
+  </g>
+</svg>

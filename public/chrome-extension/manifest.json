@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Google Weather (Open-Meteo)",
+  "version": "1.0.0",
+  "description": "Google standard weather companion powered by Open-Meteo with light and dark mode themes.",
+  "icons": {
+    "16": "/weather-icon.svg",
+    "48": "/weather-icon.svg",
+    "128": "/weather-icon.svg"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Google Weather",
+    "default_icon": {
+      "16": "/weather-icon.svg",
+      "48": "/weather-icon.svg",
+      "128": "/weather-icon.svg"
+    }
+  },
+  "permissions": [
+    "geolocation",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*",
+    "https://air-quality-api.open-meteo.com/*"
+  ]
+}
