@@ -111,12 +111,18 @@ function generateHeuristicInsight(
     ? `Air quality is degraded (AQI ${aqi}); sensitive groups should reduce prolonged outdoor exertion.`
     : `Optimal air quality (AQI ${aqi || 28}) and low atmospheric stress throughout the day.`;
 
+  let tip = 'Stay hydrated and have a great day!';
+  if (isRainy) tip = 'Don’t forget your umbrella today!';
+  else if (isSnowy) tip = 'Be careful on slippery roads today!';
+  else if (isWarm) tip = 'Stay cool and apply sunscreen if you are heading out!';
+
   return {
     headline: `${condition} in ${locationName}`,
     summary: `${locationName} is experiencing ${condition.toLowerCase()} with temperatures at ${temperature}${tempUnit} (feels like ${feelsLike}${tempUnit}). Humidity is ${humidity}% with winds of ${windSpeed} ${speedUnit}.`,
     clothingAdvice: clothing,
     activityRecommendation: activity,
     healthAndComfort: health,
+    tipOfTheDay: tip,
     source,
   };
 }
@@ -227,6 +233,10 @@ Generate a structured JSON response matching the schema with friendly, natural c
                 type: Type.STRING,
                 description: 'Health commentary covering UV sun safety, air quality impact, or humidity comfort',
               },
+              tipOfTheDay: {
+                type: Type.STRING,
+                description: 'A friendly tip of the day summarizing what to take care about and how the day or night will be',
+              },
             },
             required: [
               'headline',
@@ -234,6 +244,7 @@ Generate a structured JSON response matching the schema with friendly, natural c
               'clothingAdvice',
               'activityRecommendation',
               'healthAndComfort',
+              'tipOfTheDay',
             ],
           },
         },

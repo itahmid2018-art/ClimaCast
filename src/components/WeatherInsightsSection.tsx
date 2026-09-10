@@ -112,6 +112,21 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
         </div>
       ) : insights ? (
         <div className="space-y-4">
+          {/* Tip of the Day */}
+          {insights.tipOfTheDay && (
+            <div className="rounded-2xl bg-gradient-to-r from-amber-100 to-orange-50 p-4 border border-amber-200 shadow-sm dark:from-amber-950/40 dark:to-orange-900/20 dark:border-amber-900/50 flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white shadow-xs">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-amber-900 dark:text-amber-500">Tip of the Day</h4>
+                <p className="mt-1 text-xs md:text-sm font-medium text-amber-800 dark:text-amber-200/90 leading-relaxed">
+                  {insights.tipOfTheDay}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Main Headline & Summary */}
           <div className="rounded-2xl bg-white/90 p-4 border border-slate-200/80 shadow-2xs dark:bg-slate-800/90 dark:border-slate-700/80">
             <h3 className="text-sm md:text-base font-bold text-slate-900 dark:text-white tracking-tight">

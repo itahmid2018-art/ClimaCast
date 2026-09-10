@@ -147,6 +147,7 @@ export interface WeatherInsightData {
   clothingAdvice: string;
   activityRecommendation: string;
   healthAndComfort: string;
+  tipOfTheDay: string;
   source?: string;
 }
 

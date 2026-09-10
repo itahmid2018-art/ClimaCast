@@ -52,3 +52,10 @@
 - **Container Backgrounds**: Replaced the transparent color gradients with a highly opaque `bg-white/85` and added a `backdrop-blur-md` effect to insulate the text against varying weather backgrounds.
 - **Invalid Tailwind Classes**: Replaced a broken `dark:bg-slate-850` utility class with a valid, solid `dark:bg-slate-800/90` and `dark:bg-slate-900/85` to ensure consistent dark-mode backgrounds.
 - **Text Readability**: Deepened the light mode font color slightly from `slate-600` to `slate-700` for an enhanced WCAG contrast ratio over the white background.
+
+## Turn 9
+**User:** Add a feature called "Tip for the day" which is a summary for the user that includes what to take care about and how would be the day or night.
+**Agent Response:** I have successfully implemented the "Tip of the Day" feature!
+- **Gemini Engine Update**: I updated the AI instruction prompt and JSON schema in `server.ts` to instruct the Gemini model to dynamically evaluate the current forecast and generate a `tipOfTheDay` string.
+- **Heuristic Engine Update**: In the event that the Gemini API quota is exhausted, I also updated the fallback `generateHeuristicInsight` engine to output a context-aware tip of the day (e.g. advising umbrellas, sunscreen, or hydration based on the conditions).
+- **UI Update**: Added a beautifully styled, high-contrast amber banner to the top of the Weather Insights section that displays the tip prominently to the user.
