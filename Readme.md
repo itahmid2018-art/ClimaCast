@@ -1,4 +1,4 @@
-# Google Weather (Open-Meteo Edition)
+# ClimaCast (Open-Meteo Edition)
 
 A reference-grade web application built to **Google Weather design standards**, powered by the free and open-source meteorological models of **[Open-Meteo](https://open-meteo.com/)**. Designed from the ground up to be hosted as a modern responsive web app (PWA), compiled into native **Android** and **iOS** mobile apps using Capacitor, and packaged as a **Google Chrome Extension (Manifest V3)**.
 
