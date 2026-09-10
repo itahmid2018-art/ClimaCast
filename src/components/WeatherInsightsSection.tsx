@@ -54,7 +54,7 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
   return (
     <div
       id="weather-insights-section"
-      className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 p-5 shadow-xs transition-all dark:border-slate-800/80 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-900/90 dark:to-blue-950/20"
+      className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/85 backdrop-blur-md p-5 shadow-xs transition-all dark:border-slate-800/80 dark:bg-slate-900/85"
     >
       {/* Subtle Background Accent Gradient */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-400/10 blur-3xl dark:bg-blue-600/10" />
@@ -113,11 +113,11 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
       ) : insights ? (
         <div className="space-y-4">
           {/* Main Headline & Summary */}
-          <div className="rounded-2xl bg-white/80 p-4 border border-slate-200/60 shadow-2xs dark:bg-slate-850/60 dark:border-slate-800/80">
+          <div className="rounded-2xl bg-white/90 p-4 border border-slate-200/80 shadow-2xs dark:bg-slate-800/90 dark:border-slate-700/80">
             <h3 className="text-sm md:text-base font-bold text-slate-900 dark:text-white tracking-tight">
               {insights.headline}
             </h3>
-            <p className="mt-1.5 text-xs md:text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="mt-1.5 text-xs md:text-sm leading-relaxed text-slate-700 dark:text-slate-300">
               {insights.summary}
             </p>
           </div>
@@ -125,7 +125,7 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
           {/* 3 Lifestyle Guidance Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Clothing Advice */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 shadow-2xs transition hover:shadow-xs dark:border-slate-800/80 dark:bg-slate-850/50">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white/90 p-3.5 shadow-2xs transition hover:shadow-xs dark:border-slate-700/80 dark:bg-slate-800/90">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                   <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
@@ -133,14 +133,14 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
                   </span>
                   <span>What to Wear</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="mt-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                   {insights.clothingAdvice}
                 </p>
               </div>
             </div>
 
             {/* Outdoors & Activities */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 shadow-2xs transition hover:shadow-xs dark:border-slate-800/80 dark:bg-slate-850/50">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white/90 p-3.5 shadow-2xs transition hover:shadow-xs dark:border-slate-700/80 dark:bg-slate-800/90">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                   <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400">
@@ -148,14 +148,14 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
                   </span>
                   <span>Outdoor Activities</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="mt-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                   {insights.activityRecommendation}
                 </p>
               </div>
             </div>
 
             {/* Health & Comfort */}
-            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white/70 p-3.5 shadow-2xs transition hover:shadow-xs dark:border-slate-800/80 dark:bg-slate-850/50">
+            <div className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white/90 p-3.5 shadow-2xs transition hover:shadow-xs dark:border-slate-700/80 dark:bg-slate-800/90">
               <div>
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                   <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
@@ -163,7 +163,7 @@ export const WeatherInsightsSection: React.FC<WeatherInsightsSectionProps> = ({
                   </span>
                   <span>Health & Comfort</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="mt-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                   {insights.healthAndComfort}
                 </p>
               </div>

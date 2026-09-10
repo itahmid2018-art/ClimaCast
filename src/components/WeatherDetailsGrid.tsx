@@ -70,13 +70,7 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
           </div>
           
           {/* AQI Source Toggle */}
-          <div className="flex bg-slate-200 dark:bg-slate-800 p-0.5 rounded-lg w-full max-w-[200px]">
-            <button 
-              className={`flex-1 text-[10px] py-1 rounded-md transition-all font-semibold ${aqiSource === 'official' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-              onClick={() => setAqiSource('official')}
-            >
-              Official
-            </button>
+          <div className="flex bg-slate-200 dark:bg-slate-800 p-0.5 rounded-lg w-full max-w-[150px]">
             <button 
               className={`flex-1 text-[10px] py-1 rounded-md transition-all font-semibold ${aqiSource === 'hyperlocal' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
               onClick={() => setAqiSource('hyperlocal')}

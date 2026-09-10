@@ -37,3 +37,18 @@
 **Agent Response:** I have added a dynamically updating emoji indicator to the CurrentWeatherHero component. 
 - **Helper Logic**: Created a helper function that maps the WMO weather codes to playful emoji representations (like ☀️ for clear skies, 🌧️ for rain, 🌩️ for thunderstorms, and more, adapting based on day or night). 
 - **UI Update**: Injected the animated, pulsing emoji right next to the hero temperature display to deliver a more playful and engaging UI experience.
+
+## Turn 7
+**User:** please restore to the default AQI API while maintaining PurpleAir API and remove IQAIR API.
+**Agent Response:** I have successfully removed the IQAir API and restored the default AQI behavior while keeping the PurpleAir integration intact.
+- **Server Updates**: Removed the `/api/aqi/iqair` proxy endpoint entirely from `server.ts`.
+- **UI & Hooks Updates**: Removed the "Official" tab from the AQI toggle inside `WeatherDetailsGrid.tsx` and stripped all IQAir fetching logic out of `useAQI.ts`. The toggle now perfectly switches between **HyperLocal** (PurpleAir) and **Default** (Open-Meteo).
+- **Environment**: Cleaned up the `IQAIR_API_KEY` requirement from `.env.example`.
+- **Documentation**: Cleared out references to IQAir in the project specification and Readme docs.
+
+## Turn 8
+**User:** The "Weather Insights" section and the data presented are unreadable, please check the font color and background and keep them in contrast.
+**Agent Response:** I fixed the contrast issues in the Weather Insights section. The dynamic weather backgrounds were previously bleeding through the semi-transparent layers and reducing text legibility.
+- **Container Backgrounds**: Replaced the transparent color gradients with a highly opaque `bg-white/85` and added a `backdrop-blur-md` effect to insulate the text against varying weather backgrounds.
+- **Invalid Tailwind Classes**: Replaced a broken `dark:bg-slate-850` utility class with a valid, solid `dark:bg-slate-800/90` and `dark:bg-slate-900/85` to ensure consistent dark-mode backgrounds.
+- **Text Readability**: Deepened the light mode font color slightly from `slate-600` to `slate-700` for an enhanced WCAG contrast ratio over the white background.

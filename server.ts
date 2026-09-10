@@ -294,33 +294,6 @@ Generate a structured JSON response matching the schema with friendly, natural c
   return res.json(fallbackResult);
 });
 
-// Official AQI route via IQAir (AirVisual)
-app.get('/api/aqi/iqair', async (req: Request, res: Response): Promise<any> => {
-  const lat = req.query.lat as string;
-  const lon = req.query.lon as string;
-  const key = process.env.IQAIR_API_KEY;
-  
-  if (!key) {
-    return res.status(500).json({ error: 'IQAIR_API_KEY is not configured.' });
-  }
-  if (!lat || !lon) {
-    return res.status(400).json({ error: 'lat and lon are required' });
-  }
-  
-  try {
-    const url = `https://api.airvisual.com/v2/nearest_city?lat=${lat}&lon=${lon}&key=${key}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`IQAir API error: ${response.status}`);
-    }
-    const data = await response.json();
-    return res.json(data);
-  } catch (err: any) {
-    console.error('IQAir error:', err);
-    return res.status(500).json({ error: err.message });
-  }
-});
-
 // HyperLocal AQI route via PurpleAir
 app.get('/api/aqi/purpleair', async (req: Request, res: Response): Promise<any> => {
   const latStr = req.query.lat as string;

@@ -3,7 +3,7 @@ import { AirQualityData } from '../types';
 import { evaluateAQI } from '../utils/weatherCodes';
 import { pm25ToAQI } from '../utils/aqiCalc';
 
-export type AqiSource = 'openmeteo' | 'official' | 'hyperlocal';
+export type AqiSource = 'openmeteo' | 'hyperlocal';
 
 export function useAQI(lat: number, lon: number, defaultAirQuality?: AirQualityData) {
   const [source, setSource] = useState<AqiSource>('openmeteo');
@@ -24,35 +24,7 @@ export function useAQI(lat: number, lon: number, defaultAirQuality?: AirQualityD
 
     const fetchAQI = async () => {
       try {
-        if (source === 'official') {
-          // IQAir AirVisual
-          const res = await fetch(`/api/aqi/iqair?lat=${lat}&lon=${lon}`);
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || 'Failed to fetch Official AQI');
-          }
-          const raw = await res.json();
-          if (raw.data?.current?.pollution) {
-            const aqiUs = raw.data.current.pollution.aqius;
-            const evalData = evaluateAQI(aqiUs);
-            if (isMounted) {
-              setData({
-                aqiUs,
-                pm2_5: 0, // IQAir doesn't easily expose individual values on nearest_city
-                pm10: 0,
-                nitrogenDioxide: 0,
-                ozone: 0,
-                sulphurDioxide: 0,
-                carbonMonoxide: 0,
-                qualityLevel: evalData.level,
-                qualityColor: evalData.color,
-                advice: evalData.advice,
-              });
-            }
-          } else {
-            throw new Error('No pollution data available');
-          }
-        } else if (source === 'hyperlocal') {
+        if (source === 'hyperlocal') {
           // PurpleAir
           const res = await fetch(`/api/aqi/purpleair?lat=${lat}&lon=${lon}`);
           if (!res.ok) {

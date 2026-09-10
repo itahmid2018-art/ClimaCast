@@ -7,7 +7,7 @@ A reference-grade web application built to **ClimaCast design standards**, power
 ## ✨ Features
 
 - **Dynamic Weather Backgrounds:** Immersive, CSS-based gradient backgrounds that smoothly transition colors based on live weather conditions (Clear, Cloudy, Rain, Thunderstorm, Snow, Fog, etc.) wrapping the entire application.
-- **Multi-Source Air Quality (AQI):** Switch between real-time AQI providers instantly. Includes Official AQI via IQAir (AirVisual), HyperLocal AQI via PurpleAir's real-time community sensor network, and the Default Open-Meteo model.
+- **Multi-Source Air Quality (AQI):** Switch between real-time AQI providers instantly. Includes Official AQI via , HyperLocal AQI via PurpleAir's real-time community sensor network, and the Default Open-Meteo model.
 - **ClimaCast Aesthetics:** Material 3 inspired layout with clean typography, generous spacing, and dynamic atmospheric gradients matching real-time weather and daylight.
 - **Weather Insights (Powered by Gemini AI):** Natural language meteorological intelligence generating concise, conversational summaries, "What to Wear" dressing advice, outdoor activity guidance, and health/comfort ratings using the server-side `@google/genai` SDK (`gemini-3.8-flash`).
 - **Severe Weather Alerts & Storm Warnings:** High-visibility emergency warning banners positioned prominently above the current weather card, evaluating Open-Meteo convective models for severe thunderstorms, hail, high winds, flash floods, winter storms, extreme heat, and air quality advisories with expandable protective safety actions and live simulation mode.

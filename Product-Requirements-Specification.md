@@ -30,7 +30,7 @@ The goal is to deliver a reference-grade, ClimaCast weather application combinin
                           ┌────────────────────────┐
                           │   Core Data APIs       │
                           │ • Open-Meteo Forecast  │
-                          │ • IQAir (AirVisual)    │
+                          │                        │
                           │ • PurpleAir AQI        │
                           └───────────┬────────────┘
                                       │ HTTPS JSON (REST)
@@ -222,7 +222,7 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 - **Map Tools:** Fullscreen expansion mode, zoom controls, one-tap recenter button, and customized pulsing location pin with temperature badge.
 
 ### FR-5: Atmospheric Bento-Grid Cards
-- **Multi-Source Air Quality (US AQI):** Switchable APIs including Official (IQAir), HyperLocal (PurpleAir), and Default (Open-Meteo). Displays numerical AQI score, categorical indicator (Good, Moderate, Unhealthy), progress bar, health advice, and pollutant breakdown (PM2.5, PM10, Ozone).
+- **Multi-Source Air Quality (US AQI):** Switchable APIs including HyperLocal (PurpleAir), and Default (Open-Meteo). Displays numerical AQI score, categorical indicator (Good, Moderate, Unhealthy), progress bar, health advice, and pollutant breakdown (PM2.5, PM10, Ozone).
 - **UV Index:** Current index, peak time forecast, and protection guidance scale.
 - **Wind & Direction:** Animated directional compass dial, degree angle, cardinal name (e.g. ENE), and gusts.
 - **Sunrise & Sunset:** Daylight solar arc diagram indicating time elapsed and remaining daylight.
