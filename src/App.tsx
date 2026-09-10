@@ -21,6 +21,8 @@ import { WeatherAlertsBanner } from './components/WeatherAlertsBanner';
 import { WeatherInsightsSection } from './components/WeatherInsightsSection';
 import { InteractiveWeatherMap } from './components/InteractiveWeatherMap';
 import { BackgroundSyncModal } from './components/BackgroundSyncModal';
+import { WeatherBackground } from './components/WeatherBackground';
+import { getWeatherCondition } from './utils/weatherCodes';
 import { useBackgroundSync } from './hooks/useBackgroundSync';
 import { getSimulatedSevereStormAlert } from './utils/alertDetector';
 import {
@@ -241,15 +243,21 @@ export default function App() {
     loadWeather(currentLocation, false);
   };
 
+  const backgroundCategory = weather 
+    ? getWeatherCondition(weather.current.weatherCode, weather.current.isDay).backgroundCategory 
+    : 'clear-day';
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 flex flex-col justify-between selection:bg-blue-500/20">
+    <div className="min-h-screen text-slate-900 transition-colors duration-300 dark:text-slate-100 flex flex-col justify-between selection:bg-blue-500/20 relative">
+      <WeatherBackground category={backgroundCategory} />
+      
       {/* Platform view frame container */}
       <div
-        className={`w-full mx-auto transition-all duration-300 ${
+        className={`w-full mx-auto transition-all duration-300 relative z-10 ${
           platformView === 'mobile'
-            ? 'max-w-[420px] my-6 rounded-[44px] border-[10px] border-slate-800 dark:border-slate-700 shadow-2xl overflow-hidden bg-white dark:bg-slate-900 min-h-[840px]'
+            ? 'max-w-[420px] my-6 rounded-[44px] border-[10px] border-slate-800 dark:border-slate-700 shadow-2xl overflow-hidden min-h-[840px] bg-white/20 dark:bg-slate-950/20 backdrop-blur-3xl'
             : platformView === 'extension'
-            ? 'max-w-[390px] my-6 rounded-3xl border-2 border-slate-300 dark:border-slate-700 shadow-2xl overflow-hidden bg-white dark:bg-slate-900'
+            ? 'max-w-[390px] my-6 rounded-3xl border-2 border-slate-300 dark:border-slate-700 shadow-2xl overflow-hidden bg-white/20 dark:bg-slate-950/20 backdrop-blur-3xl'
             : 'max-w-6xl'
         }`}
       >
@@ -427,7 +435,7 @@ export default function App() {
               <span>Multi-Platform Guide</span>
             </button>
             <span>•</span>
-            <span className="text-slate-400">Google Standards Design</span>
+            <span className="text-slate-400">ClimaCast Platform</span>
           </div>
         </div>
       </footer>

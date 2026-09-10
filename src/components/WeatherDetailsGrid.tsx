@@ -9,6 +9,7 @@ import {
   TemperatureUnit,
 } from '../types';
 import { getWindDirectionName } from '../utils/weatherCodes';
+import { useAQI } from '../hooks/useAQI';
 import {
   Wind,
   Compass,
@@ -29,8 +30,10 @@ interface WeatherDetailsGridProps {
 }
 
 export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather, unit }) => {
-  const { current, daily, airQuality, location } = weather;
+  const { current, daily, airQuality: defaultAirQuality, location } = weather;
   const today = daily[0];
+
+  const { source: aqiSource, setSource: setAqiSource, data: airQuality, isLoading: isAqiLoading, error: aqiError } = useAQI(location.latitude, location.longitude, defaultAirQuality);
 
   const windSpeedUnit = unit === 'celsius' ? 'km/h' : 'mph';
   const windDirName = getWindDirectionName(current.windDirection);
@@ -53,19 +56,52 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
     <div id="weather-details-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {/* 1. Air Quality Card */}
       <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            Air Quality (AQI)
-          </span>
-          {airQuality && (
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${airQuality.qualityColor} bg-slate-100 dark:bg-slate-800`}>
-              {airQuality.qualityLevel}
+        <div className="flex flex-col gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" />
+              Air Quality (AQI)
             </span>
-          )}
+            {airQuality && !isAqiLoading && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${airQuality.qualityColor} bg-slate-100 dark:bg-slate-800`}>
+                {airQuality.qualityLevel}
+              </span>
+            )}
+          </div>
+          
+          {/* AQI Source Toggle */}
+          <div className="flex bg-slate-200 dark:bg-slate-800 p-0.5 rounded-lg w-full max-w-[200px]">
+            <button 
+              className={`flex-1 text-[10px] py-1 rounded-md transition-all font-semibold ${aqiSource === 'official' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              onClick={() => setAqiSource('official')}
+            >
+              Official
+            </button>
+            <button 
+              className={`flex-1 text-[10px] py-1 rounded-md transition-all font-semibold ${aqiSource === 'hyperlocal' ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              onClick={() => setAqiSource('hyperlocal')}
+            >
+              HyperLocal
+            </button>
+            <button 
+              className={`flex-1 text-[10px] py-1 rounded-md transition-all font-semibold ${aqiSource === 'openmeteo' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              onClick={() => setAqiSource('openmeteo')}
+            >
+              Default
+            </button>
+          </div>
         </div>
 
-        {airQuality ? (
+        {isAqiLoading ? (
+          <div className="py-6 flex flex-col items-center justify-center text-xs text-slate-400 gap-2">
+            <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            Fetching real-time data...
+          </div>
+        ) : aqiError ? (
+           <div className="py-6 text-center text-xs text-red-500 font-medium">
+             {aqiError}
+           </div>
+        ) : airQuality ? (
           <div className="mt-3 flex flex-col gap-3">
             <div className="flex items-baseline gap-3">
               <span className="text-4xl font-extrabold text-slate-900 dark:text-white">

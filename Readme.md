@@ -1,18 +1,20 @@
 # ClimaCast (Open-Meteo Edition)
 
-A reference-grade web application built to **Google Weather design standards**, powered by the free and open-source meteorological models of **[Open-Meteo](https://open-meteo.com/)**. Designed from the ground up to be hosted as a modern responsive web app (PWA), compiled into native **Android** and **iOS** mobile apps using Capacitor, and packaged as a **Google Chrome Extension (Manifest V3)**.
+A reference-grade web application built to **ClimaCast design standards**, powered by the free and open-source meteorological models of **[Open-Meteo](https://open-meteo.com/)**. Designed from the ground up to be hosted as a modern responsive web app (PWA), compiled into native **Android** and **iOS** mobile apps using Capacitor, and packaged as a **Google Chrome Extension (Manifest V3)**.
 
 ---
 
 ## ✨ Features
 
-- **Google Weather Aesthetics:** Material 3 inspired layout with clean typography, generous spacing, and dynamic atmospheric gradients matching real-time weather and daylight.
+- **Dynamic Weather Backgrounds:** Immersive, CSS-based gradient backgrounds that smoothly transition colors based on live weather conditions (Clear, Cloudy, Rain, Thunderstorm, Snow, Fog, etc.) wrapping the entire application.
+- **Multi-Source Air Quality (AQI):** Switch between real-time AQI providers instantly. Includes Official AQI via IQAir (AirVisual), HyperLocal AQI via PurpleAir's real-time community sensor network, and the Default Open-Meteo model.
+- **ClimaCast Aesthetics:** Material 3 inspired layout with clean typography, generous spacing, and dynamic atmospheric gradients matching real-time weather and daylight.
 - **Weather Insights (Powered by Gemini AI):** Natural language meteorological intelligence generating concise, conversational summaries, "What to Wear" dressing advice, outdoor activity guidance, and health/comfort ratings using the server-side `@google/genai` SDK (`gemini-3.8-flash`).
 - **Severe Weather Alerts & Storm Warnings:** High-visibility emergency warning banners positioned prominently above the current weather card, evaluating Open-Meteo convective models for severe thunderstorms, hail, high winds, flash floods, winter storms, extreme heat, and air quality advisories with expandable protective safety actions and live simulation mode.
 - **Light & Dark Theme Parity:** Seamless toggle between Google light surface and dark mode with system preference synchronization.
-- **Real-Time Open-Meteo Integration:** Free, high-precision weather forecasts, global geocoding city search, and air quality models with zero proprietary API keys required.
+- **Real-Time Open-Meteo Integration:** Free, high-precision weather forecasts, global geocoding city search, and air quality models.
 - **Interactive 24-Hour Ribbon:** Horizontal scrollable hourly forecast with tab filters for **Temperature**, **Precipitation Probability**, and **Wind Direction**.
-- **10-Day Extended Forecast:** Daily rows featuring Google Weather's signature visual min/max temperature range bar and expandable solar/wind detail cards.
+- **10-Day Extended Forecast:** Daily rows featuring ClimaCast's signature visual min/max temperature range bar and expandable solar/wind detail cards.
 - **Interactive Weather Radar & Cloud Map:** Geospatial Leaflet map featuring real-time Doppler precipitation radar and infrared satellite cloud cover layers, radar loop animation player, time scrubber, opacity controls, fullscreen toggle, and theme-adaptive base styling (CartoDB Positron / Dark Matter).
 - **Atmospheric Bento-Grid:**
   - **Air Quality (US AQI):** Numerical index, quality tier, health advisories, and PM2.5 / PM10 / Ozone metrics.
@@ -66,7 +68,7 @@ The compiled, production-ready static assets are written to `dist/`.
 
 ## 📲 Progressive Web App (PWA) & "Add to Home Screen"
 
-Google Weather is fully compliant with modern Progressive Web App (PWA) specifications:
+ClimaCast is fully compliant with modern Progressive Web App (PWA) specifications:
 - **`BeforeInstallPromptEvent` Listener:** Captures the browser's install event to display a custom, branded **"Add to Home Screen"** button in the app's `CrossPlatformGuideModal` and footer actions.
 - **Standalone Mode Detection:** Automatically detects if the app is already installed or launched from the home screen (`display-mode: standalone`).
 - **Device-Specific Installation Guides:** Step-by-step interactive instructions for iOS Safari (`Share` &rarr; `Add to Home Screen`) and Android / Desktop Chrome.
@@ -144,7 +146,7 @@ The project includes an official Manifest V3 configuration in `public/chrome-ext
 3. Open Google Chrome and navigate to `chrome://extensions`.
 4. Turn ON **Developer mode** in the upper-right corner.
 5. Click **Load unpacked** and select the `dist/` directory.
-6. Click the Extensions puzzle icon in the Chrome toolbar and pin **Google Weather**. Click the icon to view the popup!
+6. Click the Extensions puzzle icon in the Chrome toolbar and pin **ClimaCast**. Click the icon to view the popup!
 
 *Note: You can also preview the extension popup layout anytime in the web app by clicking the **"Extension"** toggle in the top header.*
 

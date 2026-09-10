@@ -173,7 +173,7 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                          Install Google Weather
+                          Install ClimaCast
                         </h4>
                         <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                           PWA
@@ -202,7 +202,7 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
                         onClick={handleInstallClick}
                         disabled={isInstalling}
                         className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/25 transition hover:from-blue-700 hover:to-blue-800 hover:shadow-lg active:scale-98 disabled:opacity-50"
-                        title="Add Google Weather to your Home Screen"
+                        title="Add ClimaCast to your Home Screen"
                       >
                         <Download className={`h-4 w-4 ${isInstalling ? 'animate-bounce' : ''}`} />
                         <span>{isInstalling ? 'Installing...' : 'Add to Home Screen'}</span>
@@ -401,7 +401,7 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
               <span>Add to Home Screen</span>
             </button>
           ) : (
-            <span className="text-xs text-slate-400">Google Weather PWA</span>
+            <span className="text-xs text-slate-400">ClimaCast PWA</span>
           )}
 
           <button

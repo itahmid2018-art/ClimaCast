@@ -92,7 +92,7 @@ export const DailyForecastList: React.FC<DailyForecastListProps> = ({ daily, uni
                   </div>
                 </div>
 
-                {/* Visual Temperature Bar Span (Google Weather signature) */}
+                {/* Visual Temperature Bar Span */}
                 <div className="flex-1 flex items-center gap-2 max-w-[200px] sm:max-w-none">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 w-7 text-right">
                     {item.tempMin}°

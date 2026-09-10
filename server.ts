@@ -294,6 +294,73 @@ Generate a structured JSON response matching the schema with friendly, natural c
   return res.json(fallbackResult);
 });
 
+// Official AQI route via IQAir (AirVisual)
+app.get('/api/aqi/iqair', async (req: Request, res: Response): Promise<any> => {
+  const lat = req.query.lat as string;
+  const lon = req.query.lon as string;
+  const key = process.env.IQAIR_API_KEY;
+  
+  if (!key) {
+    return res.status(500).json({ error: 'IQAIR_API_KEY is not configured.' });
+  }
+  if (!lat || !lon) {
+    return res.status(400).json({ error: 'lat and lon are required' });
+  }
+  
+  try {
+    const url = `https://api.airvisual.com/v2/nearest_city?lat=${lat}&lon=${lon}&key=${key}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`IQAir API error: ${response.status}`);
+    }
+    const data = await response.json();
+    return res.json(data);
+  } catch (err: any) {
+    console.error('IQAir error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// HyperLocal AQI route via PurpleAir
+app.get('/api/aqi/purpleair', async (req: Request, res: Response): Promise<any> => {
+  const latStr = req.query.lat as string;
+  const lonStr = req.query.lon as string;
+  const key = process.env.PURPLEAIR_API_KEY;
+  
+  if (!key) {
+    return res.status(500).json({ error: 'PURPLEAIR_API_KEY is not configured.' });
+  }
+  if (!latStr || !lonStr) {
+    return res.status(400).json({ error: 'lat and lon are required' });
+  }
+  
+  const lat = parseFloat(latStr);
+  const lon = parseFloat(lonStr);
+  
+  // Bounding box ~11km around the location
+  const nwlat = lat + 0.1;
+  const selat = lat - 0.1;
+  const nwlng = lon - 0.1;
+  const selng = lon + 0.1;
+
+  try {
+    const url = `https://api.purpleair.com/v1/sensors?fields=name,latitude,longitude,pm2.5_10minute,humidity,temperature&max_age=3600&location_type=0&nwlng=${nwlng}&nwlat=${nwlat}&selng=${selng}&selat=${selat}`;
+    const response = await fetch(url, {
+      headers: {
+        'X-API-Key': key
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`PurpleAir API error: ${response.status}`);
+    }
+    const data = await response.json();
+    return res.json(data);
+  } catch (err: any) {
+    console.error('PurpleAir error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

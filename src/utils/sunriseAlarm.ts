@@ -275,11 +275,11 @@ export function triggerIOSAlarmOrCalendar(
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Google Weather//Pre-Sunrise Alarm//EN',
+    'PRODID:-//ClimaCast//Pre-Sunrise Alarm//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:sunrise-alarm-${Date.now()}@googleweather.app`,
+    `UID:sunrise-alarm-${Date.now()}@climacast.app`,
     `DTSTAMP:${nowUtc}`,
     `DTSTART:${startUtc}`,
     `DTEND:${endUtc}`,

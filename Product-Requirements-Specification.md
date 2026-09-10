@@ -1,5 +1,5 @@
 # Product Requirements Specification (PRS)
-## Project: Google-Standard Weather App (Open-Meteo Engine)
+## Project: ClimaCast Weather App (Open-Meteo Engine)
 **Version:** 1.0.0  
 **Document Status:** Approved & Baseline Implemented  
 **Target Architectures:** Web PWA, Android (Capacitor), iOS (Capacitor), Google Chrome Add-on (Manifest V3)  
@@ -10,16 +10,16 @@
 ## 1. Executive Summary & Vision
 
 ### 1.1 Vision Statement
-The goal is to deliver a reference-grade, Google-standard weather application combining the visual clarity, spatial discipline, and fluid hierarchy of Google Weather with the open-source, high-resolution meteorological models of Open-Meteo. The application operates with zero required proprietary API keys, delivers instantaneous client-side responsiveness, and runs seamlessly across the Web, Android, iOS, and Google Chrome as a browser extension.
+The goal is to deliver a reference-grade, ClimaCast weather application combining the visual clarity, spatial discipline, and fluid hierarchy of modern design standards with the open-source, high-resolution meteorological models of Open-Meteo. The application delivers instantaneous client-side responsiveness, and runs seamlessly across the Web, Android, iOS, and Google Chrome as a browser extension.
 
 ### 1.2 Core Product Tenets
-1. **Google Material 3 & Atmospheric Fidelity:** Uncluttered layouts, high-contrast typography, dynamic atmospheric color palettes that react to local daylight and weather conditions, and intuitive information density.
+1. **Material 3 & Atmospheric Fidelity:** Uncluttered layouts, high-contrast typography, dynamic atmospheric color palettes that react to local daylight and weather conditions, and intuitive information density.
 2. **First-Class Cross-Platform Parity:** A unified single TypeScript/React codebase compiled without code duplication into:
    - Modern Web Application & Progressive Web App (PWA)
    - Native Android Application (via Capacitor)
    - Native iOS Application (via Capacitor)
    - Google Chrome Extension / Add-on (via Manifest V3 popup architecture)
-3. **Zero-Friction Weather Intelligence:** Real-time geolocation, global search with Open-Meteo geocoding, 24-hour hourly ribbons, 10-day daily spans, and deep atmospheric cards (Air Quality US AQI, UV Index, Wind Compass, Solar daylight arc, Dew Point, Pressure).
+3. **Zero-Friction Weather Intelligence:** Real-time geolocation, global search with Open-Meteo geocoding, 24-hour hourly ribbons, 10-day daily spans, and deep atmospheric cards (Multi-Source Air Quality US AQI, UV Index, Wind Compass, Solar daylight arc, Dew Point, Pressure).
 4. **Privacy-First & Offline-Tolerant:** User coordinates and preferences never leave the client; cached forecasts provide instant offline visual continuity.
 
 ---
@@ -28,10 +28,10 @@ The goal is to deliver a reference-grade, Google-standard weather application co
 
 ```
                           ┌────────────────────────┐
-                          │   Open-Meteo APIs      │
-                          │ • Weather Forecast     │
-                          │ • Geocoding Search     │
-                          │ • Air Quality Index    │
+                          │   Core Data APIs       │
+                          │ • Open-Meteo Forecast  │
+                          │ • IQAir (AirVisual)    │
+                          │ • PurpleAir AQI        │
                           └───────────┬────────────┘
                                       │ HTTPS JSON (REST)
                                       ▼
@@ -39,11 +39,11 @@ The goal is to deliver a reference-grade, Google-standard weather application co
                       │    Core TypeScript App Layer    │
                       │  • React 19 + Tailwind CSS      │
                       │  • State & Offline Cache Engine │
-                      │  • Google Weather UI Design     │
+                      │  • ClimaCast UI Design          │
                       └───────────────┬─────────────────┘
                                       │
         ┌─────────────────────────────┼──────────────────────────────┐
-        ▼                             ▼                              ▼
+```        ▼                             ▼                              ▼
 ┌───────────────┐           ┌───────────────────┐          ┌───────────────────┐
 │ Web App / PWA │           │ Mobile (Capacitor)│          │  Chrome Extension │
 │ • Responsive  │           │ • Android Studio  │          │ • Manifest V3     │
@@ -208,7 +208,7 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 ### FR-4: 10-Day Extended Daily Forecast
 - Row layout representing 10 forecast days with localized day/date formatting.
 - Weather condition icon and precipitation probability tag.
-- Google Weather signature horizontal temperature range bar showing relative temperature span across the 10-day envelope.
+- ClimaCast signature horizontal temperature range bar showing relative temperature span across the 10-day envelope.
 - Expandable daily accordion card displaying sunrise, sunset, maximum daily wind gust, and maximum UV index.
 
 ### FR-4.5: Interactive Weather Radar & Cloud Map (Leaflet)
@@ -222,7 +222,7 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 - **Map Tools:** Fullscreen expansion mode, zoom controls, one-tap recenter button, and customized pulsing location pin with temperature badge.
 
 ### FR-5: Atmospheric Bento-Grid Cards
-- **Air Quality (US AQI):** Numerical AQI score, categorical indicator (Good, Moderate, Unhealthy), progress bar, health advice, and pollutant breakdown (PM2.5, PM10, Ozone).
+- **Multi-Source Air Quality (US AQI):** Switchable APIs including Official (IQAir), HyperLocal (PurpleAir), and Default (Open-Meteo). Displays numerical AQI score, categorical indicator (Good, Moderate, Unhealthy), progress bar, health advice, and pollutant breakdown (PM2.5, PM10, Ozone).
 - **UV Index:** Current index, peak time forecast, and protection guidance scale.
 - **Wind & Direction:** Animated directional compass dial, degree angle, cardinal name (e.g. ENE), and gusts.
 - **Sunrise & Sunset:** Daylight solar arc diagram indicating time elapsed and remaining daylight.
@@ -270,7 +270,7 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 ---
 
 ## 8. Verification & Acceptance Criteria
-- [x] Baseline UI accurately reflects Google Weather aesthetics.
+- [x] Baseline UI accurately reflects ClimaCast aesthetics.
 - [x] Dynamic condition-based atmospheric gradients operational.
 - [x] Both Light and Dark mode themes render with WCAG AA contrast.
 - [x] Geolocation and city search return live Open-Meteo data.

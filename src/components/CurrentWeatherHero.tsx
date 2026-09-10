@@ -75,6 +75,22 @@ export const CurrentWeatherHero: React.FC<CurrentWeatherHeroProps> = ({ weather,
 
   const unitSymbol = unit === 'celsius' ? '°C' : '°F';
 
+  // Helper to map weather codes to a playful emoji
+  const getWeatherEmoji = (code: number, isDay: boolean) => {
+    switch (code) {
+      case 0: return isDay ? '☀️' : '🌕';
+      case 1: return isDay ? '🌤️' : '🌑';
+      case 2: return '⛅';
+      case 3: return '☁️';
+      case 45: case 48: return '🌫️';
+      case 51: case 53: case 55: case 56: case 57: return '🌧️';
+      case 61: case 63: return '🌦️';
+      case 65: case 80: case 81: case 82: return '🌧️';
+      case 66: case 67: case 71: case 73: case 75: case 77: case 85: case 86: return '❄️';
+      case 95: case 96: case 99: return '🌩️';
+      default: return isDay ? '☀️' : '🌕';
+    }
+  };
 
   // Calculate apparent temperature differential & contextual factor
   const tempDiff = Math.round(current.apparentTemperature - current.temperature);
@@ -228,8 +244,11 @@ export const CurrentWeatherHero: React.FC<CurrentWeatherHeroProps> = ({ weather,
             </div>
 
           <div className="mt-2 flex items-baseline gap-4 flex-wrap">
-            <span className="text-6xl md:text-8xl font-black tracking-tighter leading-none">
+            <span className="text-6xl md:text-8xl font-black tracking-tighter leading-none flex items-center gap-3">
               {Math.round(current.temperature)}°
+              <span className="text-5xl md:text-7xl animate-pulse" title={condition.description}>
+                {getWeatherEmoji(current.weatherCode, current.isDay)}
+              </span>
             </span>
 
             <div className="flex flex-col gap-1">
@@ -282,7 +301,7 @@ export const CurrentWeatherHero: React.FC<CurrentWeatherHeroProps> = ({ weather,
           </div>
         </div>
 
-        {/* Right: Quick Stat Chips (Google Weather Style) */}
+        {/* Right: Quick Stat Chips */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 rounded-2xl bg-black/15 p-3 backdrop-blur-md border border-white/10 md:min-w-[420px]">
           {/* Apparent Temperature / Feels Like */}
           <div id="hero-feels-like-chip" className="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">

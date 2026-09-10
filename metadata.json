@@ -1,6 +1,6 @@
 {
   "name": "ClimaCast",
-  "description": "A Google-standard weather web application powered by Open-Meteo with light and dark modes, multi-day forecast, air quality, and ready for Android, iOS, and Chrome Extension.",
+  "description": "A powerful weather web application powered by Open-Meteo with light and dark modes, multi-day forecast, air quality, and ready for Android, iOS, and Chrome Extension.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

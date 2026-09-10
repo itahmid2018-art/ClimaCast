@@ -123,7 +123,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
       <div className="mx-auto flex max-w-6xl flex-col gap-3">
         {/* Top Control Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Logo / Title (Google Weather style) + Astronomical Moon Phase */}
+          {/* Logo / Title + Astronomical Moon Phase */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-500/30">
@@ -132,7 +132,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold tracking-tight text-slate-900 dark:text-white text-base md:text-lg">
-                    Google Weather
+                    ClimaCast
                   </span>
                   <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
                     Open-Meteo
@@ -401,7 +401,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 if (searchResults.length > 0) setIsDropdownOpen(true);
               }}
               placeholder="Search city, district, or airport (e.g. Tokyo, London, New York)..."
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white/90 pl-10 pr-24 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-3 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-400"
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-white/90 pl-10 pr-24 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-3 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:bg-slate-800"
             />
 
             {/* Right inline search actions: Clear & GPS button */}
@@ -475,6 +475,15 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
               )}
             </div>
           )}
+        </div>
+
+        {/* Quick Navigation Menu */}
+        <div className="flex justify-center flex-wrap gap-2 mt-1">
+          <button onClick={() => document.getElementById('current-weather-hero')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Current</button>
+          <button onClick={() => document.getElementById('hourly-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Hourly</button>
+          <button onClick={() => document.getElementById('daily-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">10-Day</button>
+          <button onClick={() => document.getElementById('weather-details-grid')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">AQI & Details</button>
+          <button onClick={() => document.getElementById('weather-map-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Radar Map</button>
         </div>
       </div>
 
