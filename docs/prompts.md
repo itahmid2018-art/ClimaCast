@@ -108,3 +108,10 @@ Could you please check and fix the issues with the second and third column.
 - Fixed the Time column (column 2) to correctly extract the valid ISO timestamp string rather than a missing property, preventing "Invalid Date" output.
 - Fixed the Condition column (column 3) to extract the plain-text description (e.g. "Clear sky", "Partly cloudy") instead of returning the raw JavaScript condition object `" [object Object]"`. 
 Both CSV spreadsheets and copied text reports will now parse cleanly.
+
+## Turn 17
+**User:** please move the "Tip of the Day" feature to top of the page.
+**Agent Response:** I've successfully relocated the "Tip of the Day" banner to the very top of the application!
+- **Prominent Top Placement**: Extracted the Tip of the Day logic from the lower Insights section and placed it front-and-center, right below the top navigation bar.
+- **Dynamic Re-opening**: When you manually refresh the AI insights or switch locations, the tip banner will now properly reappear at the top of the page with the newest recommendation.
+- **Improved Hierarchy**: The application now leads with actionable AI guidance before digging into the granular metrics and forecast tables.

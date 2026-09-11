@@ -9,6 +9,7 @@ import {
   ProcessedWeather,
   TemperatureUnit,
   ThemeMode,
+  WeatherInsightData,
 } from './types';
 import { fetchWeather, reverseGeocode } from './services/weatherApi';
 import { WeatherHeader } from './components/WeatherHeader';
@@ -19,6 +20,7 @@ import { WeatherDetailsGrid } from './components/WeatherDetailsGrid';
 import { CrossPlatformGuideModal } from './components/CrossPlatformGuideModal';
 import { WeatherAlertsBanner } from './components/WeatherAlertsBanner';
 import { WeatherInsightsSection } from './components/WeatherInsightsSection';
+import { TipOfTheDayBanner } from './components/TipOfTheDayBanner';
 import { InteractiveWeatherMap } from './components/InteractiveWeatherMap';
 import { BackgroundSyncModal } from './components/BackgroundSyncModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -112,6 +114,9 @@ export default function App() {
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSimulatedAlertActive, setIsSimulatedAlertActive] = useState(false);
+  
+  const [insights, setInsights] = useState<WeatherInsightData | null>(null);
+  const [isTipClosed, setIsTipClosed] = useState(false);
 
   // Sync dark class on HTML root
   useEffect(() => {
@@ -355,6 +360,14 @@ export default function App() {
             </div>
           ) : weather ? (
             <>
+              {/* Tip of the Day Banner */}
+              <TipOfTheDayBanner 
+                insights={insights} 
+                weather={weather} 
+                isTipClosed={isTipClosed} 
+                setIsTipClosed={setIsTipClosed} 
+              />
+              
               {/* Live Weather Warnings & Severe Alerts Banner (Above Current Weather Card) */}
               <WeatherAlertsBanner
                 alerts={
@@ -378,7 +391,14 @@ export default function App() {
               <CurrentWeatherHero weather={weather} unit={unit} />
 
               {/* Gemini-Powered Weather Insights Section */}
-              <WeatherInsightsSection weather={weather} unit={unit} />
+              <WeatherInsightsSection 
+                weather={weather} 
+                unit={unit} 
+                onInsightsLoaded={(data) => {
+                  setInsights(data);
+                  setIsTipClosed(false);
+                }} 
+              />
 
               {/* Hourly Forecast Ribbon */}
               <HourlyForecastRibbon hourly={weather.hourly} unit={unit} />
