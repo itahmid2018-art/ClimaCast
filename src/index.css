@@ -3,6 +3,10 @@
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', sans-serif;
+    @apply transition-colors duration-500 ease-in-out;
+  }
+  main, .weather-container {
+    @apply transition-colors duration-500 ease-in-out;
   }
 }
 

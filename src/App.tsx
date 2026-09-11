@@ -248,7 +248,7 @@ export default function App() {
     : 'clear-day';
 
   return (
-    <div className="min-h-screen text-slate-900 transition-colors duration-300 dark:text-slate-100 flex flex-col justify-between selection:bg-blue-500/20 relative">
+    <div className="min-h-screen text-slate-900 transition-colors duration-500 ease-in-out dark:text-slate-100 flex flex-col justify-between selection:bg-blue-500/20 relative">
       <WeatherBackground category={backgroundCategory} />
       
       {/* Platform view frame container */}

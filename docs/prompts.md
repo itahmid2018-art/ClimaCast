@@ -59,3 +59,10 @@
 - **Gemini Engine Update**: I updated the AI instruction prompt and JSON schema in `server.ts` to instruct the Gemini model to dynamically evaluate the current forecast and generate a `tipOfTheDay` string.
 - **Heuristic Engine Update**: In the event that the Gemini API quota is exhausted, I also updated the fallback `generateHeuristicInsight` engine to output a context-aware tip of the day (e.g. advising umbrellas, sunscreen, or hydration based on the conditions).
 - **UI Update**: Added a beautifully styled, high-contrast amber banner to the top of the Weather Insights section that displays the tip prominently to the user.
+
+## Turn 10
+**User:** Add a CSS transition to the body and main containers to ensure smooth color shifting when the application theme toggles between light and dark modes and the "Tip of the Day" should be visible on the top right of the page as a closable bubble. Also update, the background color should be with respect to the kind of climatic condition in the location.
+**Agent Response:** I have successfully added CSS transitions and converted the "Tip of the Day" to a floating bubble widget!
+- **CSS Transitions**: Updated `src/index.css` and `App.tsx` main containers with `transition-colors duration-500 ease-in-out` ensuring smooth, graceful color blending when the user toggles between light and dark themes.
+- **Floating Bubble Widget**: Upgraded the tip to be fixed in the top right of the viewport with an entrance animation (`slide-in-from-right`), and implemented a close button to dismiss it.
+- **Dynamic Climate Colors**: Wired the bubble's background, text, and border colors directly to the WMO weather condition code's mapped `backgroundCategory` (e.g., amber for clear days, blue for rain, sky for snow, indigo for clear nights).
