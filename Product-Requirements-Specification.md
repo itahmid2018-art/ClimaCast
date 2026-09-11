@@ -127,6 +127,10 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 - Search input shall debouncing queries (300ms) against Open-Meteo Geocoding API and display top 8 global matches.
 - System shall allow saving/pinning favorite locations with persistent storage.
 
+### FR-1.1: Sticky Navigation Header
+- The main navigation header (containing Search, Settings, Export, and GPS controls) shall be sticky and permanently pinned to the top of the viewport.
+- Applies a backdrop-blur glassmorphism effect for visual hierarchy when the user scrolls down through the weather feed.
+
 ### FR-1.2: Astronomical Moon Phase Indicator
 - Synodic lunar calculation engine (`calculateMoonPhase`) computing lunar cycle age (0–29.53 days), illumination percentage (0–100%), and 8-phase astronomical classification (New Moon, Waxing Crescent, First Quarter, Waxing Gibbous, Full Moon, Waning Gibbous, Last Quarter, Waning Crescent).
 - Compact astronomical badge (`#header-moon-phase-badge`) displayed within the global `WeatherHeader` with an optical vector SVG glyph and illumination percentage pill.
@@ -144,6 +148,13 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 - Displays severity level pill (`warning`, `watch`, `advisory`, `emergency`), urgency, active time, and expiry timestamp.
 - Expandable drawer reveals detailed meteorological metrics (peak gusts, rain rate, AQI) and actionable protective safety instructions.
 - Includes a live simulation toggle to test and preview severe storm warning rendering under any weather conditions.
+
+### FR-1.6: Export Weather Report
+- Render a dedicated "Export" dropdown embedded in the primary Sticky Navigation Header.
+- Generate and format live meteorological conditions on the fly:
+  - **Copy to Clipboard:** Generates a human-readable text summary of temperature, humidity, wind, cloud cover, and daily forecast ranges.
+  - **Download JSON:** Outputs deeply structured, raw application state payload.
+  - **Download CSV:** Downloads a properly delimited tabular spreadsheet format of the current readings.
 
 ### FR-2: Current Weather Hero Section
 - Display large temperature readout with prominent Apparent Temperature ("Feels Like") glassmorphism badge (`#hero-apparent-temperature-badge`) including delta differentials (`+2° warmer` / `-3° cooler`).
@@ -188,9 +199,11 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
   - Header status indicator (`#background-sync-header-btn`) displaying current sync state (`Auto-Sync`, `Syncing...`, or `Offline Cache`).
   - Offline banner (`#offline-banner-sync-info-btn`) with one-click access to background sync auto-update details.
 
-### FR-2.5: Weather Insights (Gemini AI Intelligence)
+### FR-2.5: Weather Insights (Gemini AI Intelligence) & API Key Management
+- **API Key Engine:** Secure full-stack server endpoint (`/api/settings/keys`) persisting custom API keys (Gemini, OpenAI, Anthropic, OpenRouter, PurpleAir, Radar) inside a local `db.json` database, seamlessly cascading to `.env` fallbacks if missing. Settings UI automatically syncs client inputs back to the server securely.
 - Secure full-stack server endpoint (`POST /api/weather-insights`) utilizing the `@google/genai` TypeScript SDK and `gemini-3.8-flash` model.
 - Analyzes current conditions, hourly outlook, air quality index, and UV index to synthesize:
+  - **Tip of the Day:** Highly actionable recommendation extracted and rendered at the absolute top of the viewport (below header) for prime visibility.
   - **Punchy Headline:** 4-8 word conversational summary of the day's meteorological narrative.
   - **Natural Language Overview:** 2-sentence conversational briefing of current weather and imminent changes.
   - **What to Wear Card:** Practical, temperature- and precipitation-aware clothing advice, footwear, and accessory recommendations.

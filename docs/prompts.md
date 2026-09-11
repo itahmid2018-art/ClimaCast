@@ -115,3 +115,9 @@ Both CSV spreadsheets and copied text reports will now parse cleanly.
 - **Prominent Top Placement**: Extracted the Tip of the Day logic from the lower Insights section and placed it front-and-center, right below the top navigation bar.
 - **Dynamic Re-opening**: When you manually refresh the AI insights or switch locations, the tip banner will now properly reappear at the top of the page with the newest recommendation.
 - **Improved Hierarchy**: The application now leads with actionable AI guidance before digging into the granular metrics and forecast tables.
+
+## Turn 18
+**User:** Please update the readme and all other documents with respect to the changes to code and features.
+**Agent Response:** I have successfully documented all of our newly engineered features across the project's core documentation!
+- **`Readme.md`**: Added dedicated bullet points for the Sticky Navigation Header, Export & Share Forecasts tools (JSON/CSV/Clipboard), Secure API Key Management (`db.json` integration), and the repositioned Tip of the Day.
+- **`Product-Requirements-Specification.md`**: Formally amended the architectural specification by introducing new requirements nodes (`FR-1.1`, `FR-1.6`) detailing the sticky UI implementation and dynamic report generator, alongside an overhaul of `FR-2.5` to explicitly document the server-side API Key database synchronization and Top-Level insights priority.
