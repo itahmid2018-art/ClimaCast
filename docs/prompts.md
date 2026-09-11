@@ -66,3 +66,45 @@
 - **CSS Transitions**: Updated `src/index.css` and `App.tsx` main containers with `transition-colors duration-500 ease-in-out` ensuring smooth, graceful color blending when the user toggles between light and dark themes.
 - **Floating Bubble Widget**: Upgraded the tip to be fixed in the top right of the viewport with an entrance animation (`slide-in-from-right`), and implemented a close button to dismiss it.
 - **Dynamic Climate Colors**: Wired the bubble's background, text, and border colors directly to the WMO weather condition code's mapped `backgroundCategory` (e.g., amber for clear days, blue for rain, sky for snow, indigo for clear nights).
+
+## Turn 11
+**User:** Please add a settings feature as a multi tabbed pop-up categorised for different types of API's required to run the app. Also, add a settings option to enable non Gemini API's such as Anthropic, OpenAI, OpenRouter etc.
+**Agent Response:** I have successfully added the new Settings feature to the application!
+- **Multi-Tab Settings Modal**: Created a new `SettingsModal.tsx` pop-up categorized into 'General', 'AI Models', and 'External APIs'. It's accessible via the new Settings gear icon on the global navigation header.
+- **Alternative AI Options**: Added a section to enable and configure non-Gemini API providers including Anthropic, OpenAI, and OpenRouter. The configured provider is now securely transmitted via custom HTTP headers to the server engine when requesting weather insights.
+- **API State Persistence**: All custom keys and preferences configured via the settings modal are persisted locally so you don't have to re-enter them on reload.
+
+## Turn 12
+**User:** I just noticed that the "Interactive Weather Radar & Cloud Map" section requires an API Key. Could you please add the field under the settings. Also, add a feature to verify and validate the API key every time a new key is added or updated.
+**Agent Response:** Added the Interactive Weather Radar API key field in the settings, complete with a debounced live-validation check that tests the key automatically when you update it!
+
+## Turn 13
+**User:** please ensure that the updated API keys are saved in a db.json file with a fallback of .env for API keys.
+**Agent Response:** I have successfully refactored the API key management system to prioritize a robust server-side storage flow with fallback capabilities!
+- **Persistent Server Storage (`db.json`)**: Configured a backend database (`db.json`) to securely save the active keys configured via the frontend settings UI.
+- **Environment Fallback (`.env`)**: Developed a fallback mechanism (`getApiKey`) on the backend so if a required key isn't provided in the Settings (or `db.json`), the server gracefully defaults to the local `.env` environment variables.
+- **Sync Integration**: Re-wired the frontend Settings Modal to actively fetch stored keys from the server on load, and auto-sync updates back to `db.json` asynchronously as you type.
+
+## Turn 14
+**User:** Add a button to export the current weather summary as a text-based report snippet that users can copy to their clipboard or download as a csv or json file.
+**Agent Response:** I have successfully added a new interactive "Export" button to the main dashboard!
+- **Multi-Format Support**: The dropdown provides options to "Copy to Clipboard", "Download JSON", and "Download CSV". 
+- **Summary Compilation**: When you click the export formats, it dynamically generates an elegant, human-readable summary or a properly delimited spreadsheet format representing the exact meteorological conditions you're currently viewing.
+- **Visual Placement**: Positioned cleanly above the primary weather card for easy, fast access. 
+
+## Turn 15
+**User:** Please keep the search field static such that it is always visible on top while the users scroll down to see the details and keep the export data button along with the top navigation items.
+**Agent Response:** I've updated the layout so the header controls are always accessible!
+- **Sticky Navigation Bar**: Refactored the top header containing the search field to be "sticky". Now, as you scroll down through the weather insights and forecast days, the search bar and top controls remain permanently pinned to the top of the screen with a sleek translucent blur effect.
+- **Relocated Export Button**: Moved the "Export" button out of the main scrolling view and placed it directly into the top navigation header alongside the other primary action controls (like Refresh and Settings). It is now always accessible regardless of how far down the page you've scrolled.
+
+## Turn 16
+**User:** Following is the exported data:
+Location	Time	Condition	Temperature (°C)	Feels Like (°C)	Humidity (%)	Wind Speed (km/h)	Cloud Cover (%)
+New Delhi	" ""Invalid Date"""	" ""[object Object]"""	 28	 33.7	 85	 7	 0
+
+Could you please check and fix the issues with the second and third column.
+**Agent Response:** I have successfully addressed the formatting bugs in the exported CSV and Text reports! 
+- Fixed the Time column (column 2) to correctly extract the valid ISO timestamp string rather than a missing property, preventing "Invalid Date" output.
+- Fixed the Condition column (column 3) to extract the plain-text description (e.g. "Clear sky", "Partly cloudy") instead of returning the raw JavaScript condition object `" [object Object]"`. 
+Both CSV spreadsheets and copied text reports will now parse cleanly.

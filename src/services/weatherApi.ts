@@ -286,9 +286,23 @@ export async function fetchWeatherInsights(
     const today = weather.daily[0];
     const dailySummary = today ? `High: ${today.tempMax}°, Low: ${today.tempMin}°, Rain prob: ${today.precipitationProbabilityMax}%` : '';
 
+    const provider = localStorage.getItem('gw_ai_provider') || 'gemini';
+    const openaiKey = localStorage.getItem('gw_openai_key') || '';
+    const anthropicKey = localStorage.getItem('gw_anthropic_key') || '';
+    const openrouterKey = localStorage.getItem('gw_openrouter_key') || '';
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-AI-Provider': provider,
+    };
+
+    if (provider === 'openai' && openaiKey) headers['X-OpenAI-Key'] = openaiKey;
+    if (provider === 'anthropic' && anthropicKey) headers['X-Anthropic-Key'] = anthropicKey;
+    if (provider === 'openrouter' && openrouterKey) headers['X-OpenRouter-Key'] = openrouterKey;
+
     const res = await fetch('/api/weather-insights', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         locationName: `${weather.location.name}, ${weather.location.country || ''}`,
         temperature: weather.current.temperature,

@@ -19,11 +19,13 @@ import {
   X,
   RefreshCw,
   CloudCheck,
+  Settings,
 } from 'lucide-react';
-import { GeoLocation, TemperatureUnit, ThemeMode } from '../types';
+import { GeoLocation, TemperatureUnit, ThemeMode, ProcessedWeather } from '../types';
 import { searchLocations } from '../services/weatherApi';
 import { calculateMoonPhase } from '../utils/astronomy';
 import { MoonPhaseIcon } from './MoonPhaseIcon';
+import { ExportReport } from './ExportReport';
 
 interface WeatherHeaderProps {
   currentLocation: GeoLocation;
@@ -44,6 +46,8 @@ interface WeatherHeaderProps {
   onOpenSyncModal?: () => void;
   isOffline?: boolean;
   isSyncing?: boolean;
+  onOpenSettings: () => void;
+  weather?: ProcessedWeather;
 }
 
 export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
@@ -65,6 +69,8 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   onOpenSyncModal,
   isOffline = false,
   isSyncing = false,
+  onOpenSettings,
+  weather,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
@@ -119,7 +125,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   };
 
   return (
-    <header className="relative z-30 w-full px-4 pt-4 pb-2 md:px-6">
+    <header className="sticky top-0 z-50 w-full px-4 pt-4 pb-2 md:px-6 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-transparent shadow-sm">
       <div className="mx-auto flex max-w-6xl flex-col gap-3">
         {/* Top Control Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -269,6 +275,13 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 <span>Extension</span>
               </button>
             </div>
+            
+            {/* Export Report */}
+            {weather && (
+              <div className="hidden sm:block">
+                <ExportReport weather={weather} unit={unit} />
+              </div>
+            )}
 
             {/* Favorite toggle */}
             <button
@@ -312,6 +325,17 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
               title="Refresh weather data"
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+            </button>
+
+            {/* Settings button */}
+            <button
+              id="settings-btn"
+              type="button"
+              onClick={onOpenSettings}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Settings & Preferences"
+            >
+              <Settings className="h-4 w-4" />
             </button>
 
             {/* Background Sync & Offline Status */}

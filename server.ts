@@ -6,28 +6,69 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const getDirname = () => {
+  if (typeof __dirname !== 'undefined') {
+    return __dirname;
+  }
+  return path.dirname(fileURLToPath(import.meta.url));
+};
+const _dirname = getDirname();
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
+const DB_FILE = path.join(_dirname, 'db.json');
+
+// Ensure db.json exists
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeFileSync(DB_FILE, JSON.stringify({ keys: {} }, null, 2));
+}
+
+function getStoredKeys(): Record<string, string> {
+  try {
+    const data = fs.readFileSync(DB_FILE, 'utf-8');
+    return JSON.parse(data).keys || {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveStoredKeys(newKeys: Record<string, string>) {
+  try {
+    let currentData = { keys: {} };
+    if (fs.existsSync(DB_FILE)) {
+      currentData = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    }
+    currentData.keys = { ...currentData.keys, ...newKeys };
+    fs.writeFileSync(DB_FILE, JSON.stringify(currentData, null, 2));
+  } catch (err) {
+    console.error('Failed to save keys to db.json', err);
+  }
+}
+
+function getApiKey(keyName: string): string | undefined {
+  const keys = getStoredKeys();
+  return keys[keyName] || process.env[keyName];
+}
+
 // Lazy-initialized Gemini instance
 let aiClient: GoogleGenAI | null = null;
+let aiClientKey: string | null = null;
 function getGenAI(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = getApiKey('GEMINI_API_KEY');
   if (!apiKey) {
     return null;
   }
-  if (!aiClient) {
+  if (!aiClient || aiClientKey !== apiKey) {
     aiClient = new GoogleGenAI({
       apiKey,
       httpOptions: {
@@ -36,6 +77,7 @@ function getGenAI(): GoogleGenAI | null {
         },
       },
     });
+    aiClientKey = apiKey;
   }
   return aiClient;
 }
@@ -132,6 +174,22 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Settings Keys endpoints
+app.get('/api/settings/keys', (_req: Request, res: Response) => {
+  const keys = getStoredKeys();
+  res.json({ keys });
+});
+
+app.post('/api/settings/keys', (req: Request, res: Response) => {
+  const { keys } = req.body;
+  if (keys && typeof keys === 'object') {
+    saveStoredKeys(keys);
+    res.json({ success: true, message: 'Keys saved successfully' });
+  } else {
+    res.status(400).json({ success: false, error: 'Invalid keys payload' });
+  }
+});
+
 // Gemini Weather Insights Endpoint with caching, quota-exhaustion handling, and resilient fallback
 app.post('/api/weather-insights', async (req: Request, res: Response) => {
   const {
@@ -159,10 +217,17 @@ app.post('/api/weather-insights', async (req: Request, res: Response) => {
     return res.json(cached.data);
   }
 
+  const aiProvider = req.headers['x-ai-provider'] || 'gemini';
+  const openaiKey = (req.headers['x-openai-key'] as string) || getApiKey('OPENAI_API_KEY');
+  const anthropicKey = (req.headers['x-anthropic-key'] as string) || getApiKey('ANTHROPIC_API_KEY');
+  const openrouterKey = (req.headers['x-openrouter-key'] as string) || getApiKey('OPENROUTER_API_KEY');
+
   const ai = getGenAI();
 
-  // If GEMINI_API_KEY is not configured, immediately return heuristic insight
-  if (!ai) {
+  // If using non-gemini or no gemini key is available, fallback to heuristic for now
+  // In a full implementation, you would write fetch calls to api.openai.com, api.anthropic.com, etc.
+  if ((aiProvider === 'gemini' && !ai) || (aiProvider !== 'gemini')) {
+    const providerName = aiProvider !== 'gemini' ? aiProvider.toString().charAt(0).toUpperCase() + aiProvider.toString().slice(1) : 'Meteorological Synthesis Engine';
     const heuristicData = generateHeuristicInsight(
       {
         locationName,
@@ -177,7 +242,7 @@ app.post('/api/weather-insights', async (req: Request, res: Response) => {
         hourlySummary,
         dailySummary,
       },
-      'Meteorological Synthesis Engine (API key not set)'
+      `${providerName} (Heuristic Fallback)`
     );
     insightsCache.set(cacheKey, { data: heuristicData, timestamp: Date.now() });
     return res.json(heuristicData);

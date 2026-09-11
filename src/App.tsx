@@ -21,7 +21,9 @@ import { WeatherAlertsBanner } from './components/WeatherAlertsBanner';
 import { WeatherInsightsSection } from './components/WeatherInsightsSection';
 import { InteractiveWeatherMap } from './components/InteractiveWeatherMap';
 import { BackgroundSyncModal } from './components/BackgroundSyncModal';
+import { SettingsModal } from './components/SettingsModal';
 import { WeatherBackground } from './components/WeatherBackground';
+import { ExportReport } from './components/ExportReport';
 import { getWeatherCondition } from './utils/weatherCodes';
 import { useBackgroundSync } from './hooks/useBackgroundSync';
 import { getSimulatedSevereStormAlert } from './utils/alertDetector';
@@ -108,6 +110,7 @@ export default function App() {
   const [platformView, setPlatformView] = useState<'web' | 'mobile' | 'extension'>('web');
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [isSimulatedAlertActive, setIsSimulatedAlertActive] = useState(false);
 
   // Sync dark class on HTML root
@@ -300,6 +303,8 @@ export default function App() {
           onOpenSyncModal={() => setShowSyncModal(true)}
           isOffline={isOffline}
           isSyncing={backgroundSync.isSyncing}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          weather={weather || undefined}
         />
 
         {/* Background Sync Reconnection Toast Notification */}
@@ -368,7 +373,7 @@ export default function App() {
                 onSimulateSevereAlert={() => setIsSimulatedAlertActive((prev) => !prev)}
                 isSimulatedActive={isSimulatedAlertActive}
               />
-
+              
               {/* Current Hero */}
               <CurrentWeatherHero weather={weather} unit={unit} />
 
@@ -445,6 +450,19 @@ export default function App() {
         isOpen={showGuideModal}
         onClose={() => setShowGuideModal(false)}
       />
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <SettingsModal
+          onClose={() => setShowSettingsModal(false)}
+          unit={unit}
+          onToggleUnit={handleToggleUnit}
+          theme={theme}
+          onToggleTheme={(t) => setTheme(t)}
+          platformView={platformView}
+          onSelectPlatformView={(v) => setPlatformView(v)}
+        />
+      )}
 
       {/* Service Worker Background Sync Modal */}
       <BackgroundSyncModal
