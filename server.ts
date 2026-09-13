@@ -30,29 +30,94 @@ const DB_FILE = path.join(_dirname, 'db.json');
 
 // Ensure db.json exists
 if (!fs.existsSync(DB_FILE)) {
-  fs.writeFileSync(DB_FILE, JSON.stringify({ keys: {} }, null, 2));
+  fs.writeFileSync(
+    DB_FILE,
+    JSON.stringify(
+      {
+        keys: {},
+        savedLocations: [
+          { id: 2988507, name: 'Paris', country: 'France', latitude: 48.8534, longitude: 2.3488, timezone: 'Europe/Paris' },
+          { id: 5128581, name: 'New York', country: 'United States', admin1: 'New York', latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York' },
+          { id: 1850147, name: 'Tokyo', country: 'Japan', latitude: 35.6895, longitude: 139.6917, timezone: 'Asia/Tokyo' },
+        ],
+        notificationSettings: {
+          enabled: true,
+          morningTipEnabled: true,
+          severeAlertsOnly: true,
+        },
+      },
+      null,
+      2
+    )
+  );
+}
+
+interface DbData {
+  keys: Record<string, string>;
+  savedLocations?: any[];
+  notificationSettings?: {
+    enabled: boolean;
+    morningTipEnabled: boolean;
+    severeAlertsOnly: boolean;
+  };
+  lastMorningTipDate?: string;
+  lastAlarmingAlertTimestamp?: number;
+}
+
+function getDbData(): DbData {
+  try {
+    const raw = fs.readFileSync(DB_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return {
+      keys: parsed.keys || {},
+      savedLocations: parsed.savedLocations || [
+        { id: 2988507, name: 'Paris', country: 'France', latitude: 48.8534, longitude: 2.3488, timezone: 'Europe/Paris' },
+        { id: 5128581, name: 'New York', country: 'United States', admin1: 'New York', latitude: 40.7128, longitude: -74.006, timezone: 'America/New_York' },
+        { id: 1850147, name: 'Tokyo', country: 'Japan', latitude: 35.6895, longitude: 139.6917, timezone: 'Asia/Tokyo' },
+      ],
+      notificationSettings: parsed.notificationSettings || {
+        enabled: true,
+        morningTipEnabled: true,
+        severeAlertsOnly: true,
+      },
+      lastMorningTipDate: parsed.lastMorningTipDate,
+      lastAlarmingAlertTimestamp: parsed.lastAlarmingAlertTimestamp,
+    };
+  } catch (err) {
+    return {
+      keys: {},
+      savedLocations: [],
+      notificationSettings: {
+        enabled: true,
+        morningTipEnabled: true,
+        severeAlertsOnly: true,
+      },
+    };
+  }
+}
+
+function saveDbData(patch: Partial<DbData>) {
+  try {
+    const current = getDbData();
+    const updated: DbData = {
+      ...current,
+      ...patch,
+      keys: patch.keys ? { ...current.keys, ...patch.keys } : current.keys,
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(updated, null, 2));
+    return updated;
+  } catch (err) {
+    console.error('Failed to write to db.json', err);
+    throw err;
+  }
 }
 
 function getStoredKeys(): Record<string, string> {
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(data).keys || {};
-  } catch (err) {
-    return {};
-  }
+  return getDbData().keys;
 }
 
 function saveStoredKeys(newKeys: Record<string, string>) {
-  try {
-    let currentData = { keys: {} };
-    if (fs.existsSync(DB_FILE)) {
-      currentData = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
-    }
-    currentData.keys = { ...currentData.keys, ...newKeys };
-    fs.writeFileSync(DB_FILE, JSON.stringify(currentData, null, 2));
-  } catch (err) {
-    console.error('Failed to save keys to db.json', err);
-  }
+  saveDbData({ keys: newKeys });
 }
 
 function getApiKey(keyName: string): string | undefined {
@@ -188,6 +253,199 @@ app.post('/api/settings/keys', (req: Request, res: Response) => {
   } else {
     res.status(400).json({ success: false, error: 'Invalid keys payload' });
   }
+});
+
+// Saved Locations CRUD & Persistence in db.json
+app.get('/api/saved-locations', (_req: Request, res: Response) => {
+  const db = getDbData();
+  res.json({
+    locations: db.savedLocations || [],
+    notificationSettings: db.notificationSettings || {
+      enabled: true,
+      morningTipEnabled: true,
+      severeAlertsOnly: true,
+    },
+    lastMorningTipDate: db.lastMorningTipDate,
+  });
+});
+
+app.post('/api/saved-locations', (req: Request, res: Response) => {
+  const { locations, notificationSettings } = req.body;
+  const patch: Partial<DbData> = {};
+  if (Array.isArray(locations)) {
+    patch.savedLocations = locations;
+  }
+  if (notificationSettings && typeof notificationSettings === 'object') {
+    patch.notificationSettings = {
+      enabled: notificationSettings.enabled !== false,
+      morningTipEnabled: notificationSettings.morningTipEnabled !== false,
+      severeAlertsOnly: notificationSettings.severeAlertsOnly !== false,
+    };
+  }
+  const updated = saveDbData(patch);
+  res.json({
+    success: true,
+    locations: updated.savedLocations,
+    notificationSettings: updated.notificationSettings,
+  });
+});
+
+// Single location deletion endpoint
+app.delete('/api/saved-locations/:id', (req: Request, res: Response) => {
+  const id = req.params.id;
+  const db = getDbData();
+  const filtered = (db.savedLocations || []).filter((loc: any) => String(loc.id) !== String(id));
+  const updated = saveDbData({ savedLocations: filtered });
+  res.json({
+    success: true,
+    locations: updated.savedLocations,
+  });
+});
+
+// Notification evaluation endpoint: checks weather across saved locations for odd/alarming conditions or morning tip
+app.post('/api/saved-locations/evaluate-notifications', async (req: Request, res: Response) => {
+  const { clientTime, forceMorningTip = false, forceAlarmCheck = false } = req.body || {};
+  const db = getDbData();
+  const locations = db.savedLocations || [];
+  const settings = db.notificationSettings || {
+    enabled: true,
+    morningTipEnabled: true,
+    severeAlertsOnly: true,
+  };
+
+  if (!settings.enabled || locations.length === 0) {
+    return res.json({ notifications: [], evaluatedCount: locations.length, reason: 'Notifications disabled or no saved locations' });
+  }
+
+  const notificationsToTrigger: Array<{
+    id: string;
+    type: 'alarming_weather' | 'morning_tip';
+    title: string;
+    body: string;
+    locationName: string;
+    severity?: 'emergency' | 'warning' | 'watch' | 'info';
+    tag: string;
+  }> = [];
+
+  const now = clientTime ? new Date(clientTime) : new Date();
+  const todayDateStr = now.toISOString().slice(0, 10);
+  const currentHour = now.getHours();
+
+  // 1. Alarming or odd weather condition check across saved locations
+  // We evaluate each location using Open-Meteo's quick forecast query
+  for (const loc of locations.slice(0, 5)) {
+    try {
+      const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,snowfall,weather_code,wind_speed_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`;
+      const fRes = await fetch(forecastUrl);
+      if (!fRes.ok) continue;
+      const data = await fRes.json();
+      const current = data.current;
+      if (!current) continue;
+
+      const code = current.weather_code;
+      const windGust = current.wind_gusts_10m || 0;
+      const temp = current.temperature_2m;
+      const precip = current.precipitation || 0;
+
+      // Odd / Alarming thresholds:
+      // - Thunderstorms (95, 96, 99)
+      // - Freezing rain / Heavy snow / Squalls (66, 67, 75, 86)
+      // - Extreme winds (gusts > 60 km/h)
+      // - Extreme heat (> 38°C) or freezing cold (< -15°C)
+      // - Torrential rain (> 15mm/h)
+      let isAlarming = false;
+      let alertTitle = '';
+      let alertBody = '';
+      let severity: 'emergency' | 'warning' | 'watch' = 'warning';
+
+      if ([95, 96, 99].includes(code)) {
+        isAlarming = true;
+        severity = [96, 99].includes(code) ? 'emergency' : 'warning';
+        alertTitle = `⚡ Severe Weather Alert • ${loc.name}`;
+        alertBody = `Thunderstorm detected with lightning and turbulent winds. Take safety precautions.`;
+      } else if ([66, 67].includes(code)) {
+        isAlarming = true;
+        alertTitle = `🧊 Freezing Rain Alert • ${loc.name}`;
+        alertBody = `Freezing rain creating glaze ice on roads and pathways. Hazardous travel conditions.`;
+      } else if ([75, 86].includes(code)) {
+        isAlarming = true;
+        alertTitle = `❄️ Heavy Snow Squall • ${loc.name}`;
+        alertBody = `Significant snowfall and reduced visibility reported.`;
+      } else if (windGust >= 65) {
+        isAlarming = true;
+        alertTitle = `💨 High Wind Gust Alert • ${loc.name}`;
+        alertBody = `Damaging wind gusts of ${Math.round(windGust)} km/h detected in your saved location.`;
+      } else if (temp >= 40) {
+        isAlarming = true;
+        alertTitle = `🔥 Extreme Heat Warning • ${loc.name}`;
+        alertBody = `Dangerous ambient temperature of ${Math.round(temp)}°C. Stay hydrated and avoid peak sun.`;
+      } else if (temp <= -18) {
+        isAlarming = true;
+        alertTitle = `🥶 Dangerous Freeze Warning • ${loc.name}`;
+        alertBody = `Severe sub-zero freeze at ${Math.round(temp)}°C. High hypothermia and frostbite risk.`;
+      } else if (precip >= 15) {
+        isAlarming = true;
+        alertTitle = `🌧️ Torrential Downpour • ${loc.name}`;
+        alertBody = `Intense precipitation rate (${precip} mm/h) may trigger flash pooling and urban drainage issues.`;
+      }
+
+      if (isAlarming || forceAlarmCheck) {
+        if (forceAlarmCheck && !isAlarming) {
+          alertTitle = `⚠️ Alarming Weather Alert • ${loc.name}`;
+          alertBody = `Simulated abnormal meteorological event: Rapid barometric drop and high wind gusts.`;
+        }
+        notificationsToTrigger.push({
+          id: `alert-${loc.id}-${Date.now()}`,
+          type: 'alarming_weather',
+          title: alertTitle,
+          body: alertBody,
+          locationName: loc.name,
+          severity,
+          tag: `alarming-weather-${loc.id}`,
+        });
+      }
+    } catch (e) {
+      console.warn(`Could not evaluate alert for ${loc.name}:`, e);
+    }
+  }
+
+  // 2. If NO alarming/odd weather condition was found, send morning tip (once in morning 6 AM - 11 AM, or forced)
+  const isMorningWindow = currentHour >= 5 && currentHour <= 11;
+  const shouldSendMorningTip =
+    settings.morningTipEnabled &&
+    notificationsToTrigger.length === 0 && // "enable notifications only when there is an alarming or odd weather condition, if not just send one notification in the mornig with the tip of the day"
+    (forceMorningTip || (isMorningWindow && db.lastMorningTipDate !== todayDateStr));
+
+  if (shouldSendMorningTip) {
+    // Generate helpful tip for primary saved location (or first one)
+    const primaryLoc = locations[0];
+    const tipsList = [
+      `Rise and shine in ${primaryLoc.name}! Check UV index before noon and stay hydrated today.`,
+      `Good morning from ${primaryLoc.name}! A pleasant start to the day; keep an eye on temperature shifts by evening.`,
+      `Morning meteorological tip for ${primaryLoc.name}: Dress in light layers to adapt smoothly throughout the diurnal arc.`,
+      `Good morning! Clear atmospheric outlook ahead for ${primaryLoc.name}. Make time for fresh air today!`,
+    ];
+    const chosenTip = tipsList[Math.floor(Math.random() * tipsList.length)];
+
+    notificationsToTrigger.push({
+      id: `morning-tip-${todayDateStr}`,
+      type: 'morning_tip',
+      title: `🌅 Morning Weather Tip • ${primaryLoc.name}`,
+      body: chosenTip,
+      locationName: primaryLoc.name,
+      severity: 'info',
+      tag: `morning-tip-of-the-day`,
+    });
+
+    // Mark as sent for today in db.json
+    saveDbData({ lastMorningTipDate: todayDateStr });
+  }
+
+  res.json({
+    notifications: notificationsToTrigger,
+    evaluatedCount: locations.length,
+    lastMorningTipDate: db.lastMorningTipDate,
+  });
 });
 
 // Gemini Weather Insights Endpoint with caching, quota-exhaustion handling, and resilient fallback
@@ -374,10 +632,10 @@ Generate a structured JSON response matching the schema with friendly, natural c
 app.get('/api/aqi/purpleair', async (req: Request, res: Response): Promise<any> => {
   const latStr = req.query.lat as string;
   const lonStr = req.query.lon as string;
-  const key = process.env.PURPLEAIR_API_KEY;
+  const key = (req.headers['x-purpleair-key'] as string) || (req.query.key as string) || getApiKey('PURPLEAIR_API_KEY');
   
   if (!key) {
-    return res.status(500).json({ error: 'PURPLEAIR_API_KEY is not configured.' });
+    return res.status(401).json({ error: 'PURPLEAIR_API_KEY is not configured. Please add it in Settings > External APIs.' });
   }
   if (!latStr || !lonStr) {
     return res.status(400).json({ error: 'lat and lon are required' });
@@ -407,6 +665,31 @@ app.get('/api/aqi/purpleair', async (req: Request, res: Response): Promise<any> 
   } catch (err: any) {
     console.error('PurpleAir error:', err);
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// OpenWeatherMap Map Tile Proxy Endpoint
+app.get('/api/weather/tiles/:layer/:z/:x/:y.png', async (req: Request, res: Response): Promise<any> => {
+  const { layer, z, x, y } = req.params;
+  const apiKey = getApiKey('OPENWEATHERMAP_API_KEY') || getApiKey('OPENWEATHER_API_KEY') || getApiKey('RADAR_API_KEY');
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: 'OpenWeatherMap API key not configured' });
+  }
+
+  const url = `https://tile.openweathermap.org/map/${layer}/${z}/${x}/${y}.png?appid=${apiKey}`;
+  try {
+    const tileRes = await fetch(url);
+    if (!tileRes.ok) {
+      return res.status(tileRes.status).send('Tile fetch error');
+    }
+    const buffer = await tileRes.arrayBuffer();
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(Buffer.from(buffer));
+  } catch (err: any) {
+    console.error('Tile proxy error:', err);
+    return res.status(500).send('Error fetching weather map tile');
   }
 });
 

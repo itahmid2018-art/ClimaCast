@@ -1,0 +1,35 @@
+{
+  "keys": {},
+  "savedLocations": [
+    {
+      "id": 2988507,
+      "name": "Paris",
+      "country": "France",
+      "latitude": 48.8534,
+      "longitude": 2.3488,
+      "timezone": "Europe/Paris"
+    },
+    {
+      "id": 5128581,
+      "name": "New York",
+      "country": "United States",
+      "admin1": "New York",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "timezone": "America/New_York"
+    },
+    {
+      "id": 1850147,
+      "name": "Tokyo",
+      "country": "Japan",
+      "latitude": 35.6895,
+      "longitude": 139.6917,
+      "timezone": "Asia/Tokyo"
+    }
+  ],
+  "notificationSettings": {
+    "enabled": true,
+    "morningTipEnabled": true,
+    "severeAlertsOnly": true
+  }
+}

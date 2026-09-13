@@ -10,8 +10,15 @@ import {
   TemperatureUnit,
   ThemeMode,
   WeatherInsightData,
+  SavedLocationNotificationSettings,
 } from './types';
 import { fetchWeather, reverseGeocode } from './services/weatherApi';
+import {
+  fetchSavedLocations,
+  saveLocationsToDb,
+  evaluateSavedLocationNotifications,
+  dispatchWeatherNotification,
+} from './services/savedLocationsApi';
 import { WeatherHeader } from './components/WeatherHeader';
 import { CurrentWeatherHero } from './components/CurrentWeatherHero';
 import { HourlyForecastRibbon } from './components/HourlyForecastRibbon';
@@ -24,6 +31,7 @@ import { TipOfTheDayBanner } from './components/TipOfTheDayBanner';
 import { InteractiveWeatherMap } from './components/InteractiveWeatherMap';
 import { BackgroundSyncModal } from './components/BackgroundSyncModal';
 import { SettingsModal } from './components/SettingsModal';
+import { Earth3DModal } from './components/Earth3DModal';
 import { WeatherBackground } from './components/WeatherBackground';
 import { ExportReport } from './components/ExportReport';
 import { getWeatherCondition } from './utils/weatherCodes';
@@ -109,10 +117,84 @@ export default function App() {
     }
   });
 
+  const [notificationSettings, setNotificationSettings] = useState<SavedLocationNotificationSettings>(() => {
+    try {
+      const saved = localStorage.getItem('gw_saved_location_notifs');
+      return saved
+        ? JSON.parse(saved)
+        : {
+            enabled: true,
+            morningTipEnabled: true,
+            severeAlertsOnly: true,
+          };
+    } catch {
+      return {
+        enabled: true,
+        morningTipEnabled: true,
+        severeAlertsOnly: true,
+      };
+    }
+  });
+
+  const [notificationToast, setNotificationToast] = useState<{ title: string; body: string; type: string } | null>(null);
+
+  // Load persistent saved locations and settings from server db.json on mount
+  useEffect(() => {
+    let mounted = true;
+    fetchSavedLocations().then((res) => {
+      if (mounted && res.locations && res.locations.length > 0) {
+        setFavorites(res.locations);
+        if (res.notificationSettings) {
+          setNotificationSettings(res.notificationSettings);
+        }
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Periodic Smart Notification Evaluator:
+  // "enable notifications only when there is an alarming or odd weather condition, if not just send one notification in the mornig with the tip of the day"
+  useEffect(() => {
+    if (!notificationSettings.enabled || favorites.length === 0) return;
+
+    const runNotificationCheck = async () => {
+      try {
+        const result = await evaluateSavedLocationNotifications();
+        if (result.notifications && result.notifications.length > 0) {
+          for (const notif of result.notifications) {
+            await dispatchWeatherNotification(notif.title, notif.body, notif.tag, false);
+            setNotificationToast({
+              title: notif.title,
+              body: notif.body,
+              type: notif.type,
+            });
+            setTimeout(() => setNotificationToast(null), 10000);
+          }
+        }
+      } catch (err) {
+        console.warn('Smart notification evaluation failed:', err);
+      }
+    };
+
+    // Run initial evaluation shortly after startup (3 seconds in)
+    const initialTimer = setTimeout(runNotificationCheck, 3000);
+
+    // Periodically re-evaluate every 15 minutes
+    const interval = setInterval(runNotificationCheck, 15 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [favorites, notificationSettings]);
+
   const [platformView, setPlatformView] = useState<'web' | 'mobile' | 'extension'>('web');
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showEarthModal, setShowEarthModal] = useState(false);
   const [isSimulatedAlertActive, setIsSimulatedAlertActive] = useState(false);
   
   const [insights, setInsights] = useState<WeatherInsightData | null>(null);
@@ -189,12 +271,13 @@ export default function App() {
     loadWeather(currentLocation, !weather);
   }, [currentLocation, unit]);
 
-  // Toggle favorite location
+  // Toggle favorite location and synchronize with db.json
   const handleToggleFavorite = (loc: GeoLocation) => {
     setFavorites((prev) => {
       const exists = prev.some((f) => f.id === loc.id || (Math.abs(f.latitude - loc.latitude) < 0.05 && Math.abs(f.longitude - loc.longitude) < 0.05));
       const next = exists ? prev.filter((f) => f.id !== loc.id) : [...prev, loc];
-      localStorage.setItem('gw_favorites', JSON.stringify(next));
+      // Save directly to db.json via API and backup to localStorage
+      saveLocationsToDb(next, notificationSettings);
       return next;
     });
   };
@@ -310,7 +393,41 @@ export default function App() {
           isSyncing={backgroundSync.isSyncing}
           onOpenSettings={() => setShowSettingsModal(true)}
           weather={weather || undefined}
+          onOpenEarthModal={() => setShowEarthModal(true)}
+          notificationSettings={notificationSettings}
+          onUpdateNotificationSettings={(newSettings) => {
+            setNotificationSettings(newSettings);
+            saveLocationsToDb(favorites, newSettings);
+          }}
+          onNotificationDispatched={(title, body, type) => {
+            setNotificationToast({ title, body, type });
+            setTimeout(() => setNotificationToast(null), 10000);
+          }}
         />
+
+        {/* Smart Weather Notification Dispatch Toast */}
+        {notificationToast && (
+          <div
+            id="smart-weather-notification-toast"
+            className={`mx-4 md:mx-6 mt-3 flex items-start justify-between gap-3 rounded-2xl border p-3.5 text-xs md:text-sm shadow-md animate-in fade-in slide-in-from-top-2 duration-300 ${
+              notificationToast.type === 'alarming_weather'
+                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-800 dark:bg-rose-950/80 dark:text-rose-100'
+                : 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-100'
+            }`}
+          >
+            <div>
+              <p className="font-bold">{notificationToast.title}</p>
+              <p className="mt-0.5 text-xs opacity-90 leading-relaxed">{notificationToast.body}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotificationToast(null)}
+              className="shrink-0 font-semibold underline opacity-80 hover:opacity-100 ml-2"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Background Sync Reconnection Toast Notification */}
         {backgroundSync.syncNotification && (
@@ -492,6 +609,15 @@ export default function App() {
         isOffline={isOffline}
         location={currentLocation}
         onManualRefresh={handleRefresh}
+      />
+
+      {/* 3D Earth & Google Street View / Maps Exploration Modal */}
+      <Earth3DModal
+        isOpen={showEarthModal}
+        onClose={() => setShowEarthModal(false)}
+        location={currentLocation}
+        weather={weather || undefined}
+        unit={unit}
       />
     </div>
   );

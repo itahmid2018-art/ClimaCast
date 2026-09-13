@@ -21,11 +21,13 @@ import {
   CloudCheck,
   Settings,
 } from 'lucide-react';
-import { GeoLocation, TemperatureUnit, ThemeMode, ProcessedWeather } from '../types';
+import { GeoLocation, TemperatureUnit, ThemeMode, ProcessedWeather, SavedLocationNotificationSettings } from '../types';
 import { searchLocations } from '../services/weatherApi';
 import { calculateMoonPhase } from '../utils/astronomy';
 import { MoonPhaseIcon } from './MoonPhaseIcon';
 import { ExportReport } from './ExportReport';
+import { getWeatherEmoji } from '../utils/weatherCodes';
+import { SavedLocationsModal } from './SavedLocationsModal';
 
 interface WeatherHeaderProps {
   currentLocation: GeoLocation;
@@ -48,6 +50,10 @@ interface WeatherHeaderProps {
   isSyncing?: boolean;
   onOpenSettings: () => void;
   weather?: ProcessedWeather;
+  onOpenEarthModal?: () => void;
+  notificationSettings?: SavedLocationNotificationSettings;
+  onUpdateNotificationSettings?: (settings: SavedLocationNotificationSettings) => void;
+  onNotificationDispatched?: (title: string, body: string, type: 'alarming_weather' | 'morning_tip') => void;
 }
 
 export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
@@ -71,6 +77,14 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   isSyncing = false,
   onOpenSettings,
   weather,
+  onOpenEarthModal,
+  notificationSettings = {
+    enabled: true,
+    morningTipEnabled: true,
+    severeAlertsOnly: true,
+  },
+  onUpdateNotificationSettings,
+  onNotificationDispatched,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
@@ -82,8 +96,26 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   const moonPopoverRef = useRef<HTMLDivElement>(null);
 
   const moonPhase = calculateMoonPhase(date || new Date());
+  const weatherEmoji = weather ? getWeatherEmoji(weather.current.weatherCode, weather.current.isDay) : '☀️';
 
   const isFav = favorites.some((f) => f.id === currentLocation.id || (Math.abs(f.latitude - currentLocation.latitude) < 0.05 && Math.abs(f.longitude - currentLocation.longitude) < 0.05));
+
+  // Scroll detection to collapse header to logo + search bar
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const offset = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      setIsScrolled(offset > 40);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, []);
 
   // Search debounce
   useEffect(() => {
@@ -124,11 +156,135 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
     setIsDropdownOpen(false);
   };
 
+  const renderSearchBar = (isCompact = false) => (
+    <div ref={dropdownRef} className={`relative w-full ${isCompact ? 'max-w-2xl' : 'max-w-2xl mx-auto'}`}>
+      <div className="relative flex items-center">
+        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400">
+          <Search className="h-4 w-4" />
+        </div>
+
+        <input
+          id="location-search-input"
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => {
+            if (searchResults.length > 0) setIsDropdownOpen(true);
+          }}
+          placeholder="Search city, district, or airport (e.g. Tokyo, London, New York)..."
+          className="h-10 md:h-11 w-full rounded-2xl border border-slate-200 bg-white/90 pl-10 pr-24 text-sm text-slate-900 shadow-xs placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-3 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:bg-slate-800 transition"
+        />
+
+        {/* Right inline search actions: Clear & GPS button */}
+        <div className="absolute right-2 flex items-center gap-1">
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
+          <button
+            id="gps-location-btn"
+            type="button"
+            onClick={onUseCurrentLocation}
+            disabled={isLocating}
+            className="flex items-center gap-1 rounded-xl bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-50 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/60"
+            title="Use current GPS location"
+          >
+            {isLocating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Compass className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">GPS</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Autocomplete Dropdown */}
+      {isDropdownOpen && (
+        <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+          {isSearching ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              Searching global locations...
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className="max-h-72 overflow-y-auto py-1">
+              {searchResults.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handlePickLocation(item)}
+                  className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700/60"
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                    <div className="truncate">
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        {item.name}
+                      </span>
+                      <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        {[item.admin1, item.country].filter(Boolean).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] font-mono text-slate-400">
+                    {item.latitude.toFixed(2)}°, {item.longitude.toFixed(2)}°
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-sm text-slate-500">
+              No places found for &quot;{searchQuery}&quot;
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <header className="sticky top-0 z-50 w-full px-4 pt-4 pb-2 md:px-6 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-transparent shadow-sm">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3">
-        {/* Top Control Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <header
+      className={`sticky top-0 z-50 w-full px-4 md:px-6 transition-all duration-200 backdrop-blur-xl ${
+        isScrolled
+          ? 'py-2.5 bg-white/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80 shadow-md'
+          : 'pt-4 pb-2 bg-slate-50/80 dark:bg-slate-950/80 border-b border-transparent shadow-xs'
+      }`}
+    >
+      {isScrolled ? (
+        /* Scrolled state: strictly keep only the logo and next to it the search bar. Rest hides as normal. */
+        <div className="mx-auto flex max-w-6xl items-center gap-3 md:gap-4 w-full animate-in fade-in duration-150">
+          {/* Logo */}
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2.5 shrink-0 text-left group transition hover:opacity-90 cursor-pointer"
+            title="ClimaCast - Scroll to top"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-500/30 group-hover:scale-105 transition-transform">
+              <Sun className="h-5 w-5 animate-spin-slow text-amber-300" />
+            </div>
+            <span className="font-semibold tracking-tight text-slate-900 dark:text-white text-base md:text-lg whitespace-nowrap">
+              ClimaCast
+            </span>
+          </button>
+
+          {/* Search Bar next to Logo */}
+          <div className="flex-1 min-w-0">
+            {renderSearchBar(true)}
+          </div>
+        </div>
+      ) : (
+        /* Unscrolled Normal State */
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 animate-in fade-in duration-150">
+          {/* Top Control Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Logo / Title + Astronomical Moon Phase */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2.5">
@@ -283,6 +439,32 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
               </div>
             )}
 
+            {/* 3D Earth & Google Street View / Maps Exploration */}
+            {onOpenEarthModal && (
+              <button
+                id="earth-3d-header-btn"
+                type="button"
+                onClick={onOpenEarthModal}
+                className="flex h-9 items-center gap-1.5 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-sky-50/90 px-2.5 text-xs font-semibold text-blue-900 shadow-xs backdrop-blur-xs transition-all hover:scale-[1.02] hover:border-blue-400 hover:shadow-sm active:scale-[0.98] dark:border-blue-800/80 dark:bg-gradient-to-r dark:from-blue-950/60 dark:via-indigo-950/60 dark:to-sky-950/60 dark:text-blue-200"
+                title="Explore 3D Earth & Google Street View"
+              >
+                <div className="relative flex items-center justify-center">
+                  <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin-slow" />
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </div>
+                <span className="hidden sm:inline font-bold">3D Earth</span>
+                {weather && (
+                  <span className="flex items-center gap-1 rounded-md bg-white/80 dark:bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
+                    <span>{weatherEmoji}</span>
+                    <span>{weather.current.temperature}°</span>
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Favorite toggle */}
             <button
               id="favorite-btn"
@@ -410,96 +592,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
         </div>
 
         {/* Google Style Search Bar */}
-        <div ref={dropdownRef} className="relative w-full max-w-2xl mx-auto">
-          <div className="relative flex items-center">
-            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400">
-              <Search className="h-4 w-4" />
-            </div>
-
-            <input
-              id="location-search-input"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => {
-                if (searchResults.length > 0) setIsDropdownOpen(true);
-              }}
-              placeholder="Search city, district, or airport (e.g. Tokyo, London, New York)..."
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white/90 pl-10 pr-24 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-3 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:bg-slate-800"
-            />
-
-            {/* Right inline search actions: Clear & GPS button */}
-            <div className="absolute right-2 flex items-center gap-1">
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-
-              <button
-                id="gps-location-btn"
-                type="button"
-                onClick={onUseCurrentLocation}
-                disabled={isLocating}
-                className="flex items-center gap-1 rounded-xl bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-50 dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/60"
-                title="Use current GPS location"
-              >
-                {isLocating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Compass className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">GPS</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Autocomplete Dropdown */}
-          {isDropdownOpen && (
-            <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
-              {isSearching ? (
-                <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  Searching global locations...
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="max-h-72 overflow-y-auto py-1">
-                  {searchResults.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => handlePickLocation(item)}
-                      className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700/60"
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-                        <div className="truncate">
-                          <span className="font-semibold text-slate-900 dark:text-white">
-                            {item.name}
-                          </span>
-                          <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400">
-                            {[item.admin1, item.country].filter(Boolean).join(', ')}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="shrink-0 text-[11px] font-mono text-slate-400">
-                        {item.latitude.toFixed(2)}°, {item.longitude.toFixed(2)}°
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-6 text-center text-sm text-slate-500">
-                  No places found for &quot;{searchQuery}&quot;
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {renderSearchBar(false)}
 
         {/* Quick Navigation Menu */}
         <div className="flex justify-center flex-wrap gap-2 mt-1">
@@ -510,70 +603,22 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
           <button onClick={() => document.getElementById('weather-map-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Radar Map</button>
         </div>
       </div>
+    )}
 
-      {/* Saved Locations Modal */}
-      {showFavoritesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Bookmark className="h-5 w-5 text-amber-500" />
-                <h3 className="font-semibold text-slate-900 dark:text-white text-base">
-                  Saved Locations
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowFavoritesModal(false)}
-                className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 max-h-60 overflow-y-auto space-y-2">
-              {favorites.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                  No saved locations yet. Tap the bookmark icon on any city to pin it here.
-                </p>
-              ) : (
-                favorites.map((fav) => (
-                  <div
-                    key={fav.id}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 p-3 transition hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectLocation(fav);
-                        setShowFavoritesModal(false);
-                      }}
-                      className="flex items-center gap-2 text-left truncate"
-                    >
-                      <MapPin className="h-4 w-4 text-blue-500 shrink-0" />
-                      <div className="truncate">
-                        <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">
-                          {fav.name}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {[fav.admin1, fav.country].filter(Boolean).join(', ')}
-                        </p>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onToggleFavorite(fav)}
-                      className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 p-1"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Saved Locations & Smart Notifications Modal */}
+      <SavedLocationsModal
+        isOpen={showFavoritesModal}
+        onClose={() => setShowFavoritesModal(false)}
+        favorites={favorites}
+        onSelectLocation={(loc) => {
+          onSelectLocation(loc);
+          setShowFavoritesModal(false);
+        }}
+        onToggleFavorite={onToggleFavorite}
+        notificationSettings={notificationSettings}
+        onUpdateNotificationSettings={onUpdateNotificationSettings || (() => {})}
+        onNotificationDispatched={onNotificationDispatched}
+      />
     </header>
   );
 };

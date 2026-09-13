@@ -256,3 +256,23 @@ export function evaluateAQI(aqi: number) {
     };
   }
 }
+
+/**
+ * Maps WMO weather codes to intuitive weather pattern emojis
+ */
+export function getWeatherEmoji(code: number, isDay: boolean = true): string {
+  switch (code) {
+    case 0: return isDay ? '☀️' : '🌕';
+    case 1: return isDay ? '🌤️' : '🌑';
+    case 2: return '⛅';
+    case 3: return '☁️';
+    case 45: case 48: return '🌫️';
+    case 51: case 53: case 55: case 56: case 57: return '🌧️';
+    case 61: case 63: return '🌦️';
+    case 65: case 80: case 81: case 82: return '🌧️';
+    case 66: case 67: case 71: case 73: case 75: case 77: case 85: case 86: return '❄️';
+    case 95: case 96: case 99: return '🌩️';
+    default: return isDay ? '☀️' : '🌙';
+  }
+}
+

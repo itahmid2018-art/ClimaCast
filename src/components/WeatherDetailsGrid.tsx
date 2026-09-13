@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   ProcessedWeather,
   TemperatureUnit,
 } from '../types';
 import { getWindDirectionName } from '../utils/weatherCodes';
 import { useAQI } from '../hooks/useAQI';
+import { PastTrendsView } from './PastTrendsView';
 import {
   Wind,
   Compass,
@@ -22,6 +24,8 @@ import {
   CloudRain,
   ShieldCheck,
   AlertTriangle,
+  LayoutGrid,
+  TrendingUp,
 } from 'lucide-react';
 
 interface WeatherDetailsGridProps {
@@ -52,10 +56,69 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
   // Approximate dew point: T - ((100 - RH)/5)
   const dewPoint = Math.round(current.temperature - (100 - current.relativeHumidity) / 5);
 
+  const [activeTab, setActiveTab] = useState<'current' | 'trends'>('current');
+
   return (
-    <div id="weather-details-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {/* 1. Air Quality Card */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
+    <div id="weather-details-grid" className="flex flex-col gap-4">
+      {/* Top Tab Navigation: Current Diagnostics vs Past Trends */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <div className="flex items-center rounded-2xl bg-slate-200/70 p-1 dark:bg-slate-800/80 backdrop-blur-xs">
+          <button
+            id="tab-current-metrics"
+            type="button"
+            onClick={() => setActiveTab('current')}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              activeTab === 'current'
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            <span>Current Diagnostics</span>
+          </button>
+          <button
+            id="tab-past-trends"
+            type="button"
+            onClick={() => setActiveTab('trends')}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              activeTab === 'trends'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <TrendingUp className="h-4 w-4" />
+            <span>Past Trends</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide transition ${
+                activeTab === 'trends'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              }`}
+            >
+              History
+            </span>
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-1.5 font-medium">
+          {activeTab === 'current' ? (
+            <span>6-Card Atmospheric Telemetry</span>
+          ) : (
+            <span>Historical Climate Analytics Powered by Recharts</span>
+          )}
+        </div>
+      </div>
+
+      {activeTab === 'current' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* 1. Air Quality Card */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20px" }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between"
+          >
         <div className="flex flex-col gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -137,10 +200,16 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             Air quality data unavailable for this coordinate.
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* 2. UV Index Card */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20px" }}
+        transition={{ delay: 0.2, duration: 0.4 }}
+        className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between"
+      >
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
             <Sun className="h-4 w-4 text-amber-500" />
@@ -177,10 +246,16 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             0-2: Low • 3-5: Mod • 6-7: High • 8-10: Very High • 11+: Ext
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 3. Wind & Gusts Card */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20px" }}
+        transition={{ delay: 0.3, duration: 0.4 }}
+        className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between"
+      >
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
             <Wind className="h-4 w-4 text-teal-500" />
@@ -224,10 +299,16 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
         <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
           Max daily gusts: {today ? today.windGustsMax : current.windGusts} {windSpeedUnit}
         </div>
-      </div>
+      </motion.div>
 
       {/* 4. Sunrise & Sunset Card (Daylight Solar Arc) */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20px" }}
+        transition={{ delay: 0.4, duration: 0.4 }}
+        className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between"
+      >
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
             <Sunrise className="h-4 w-4 text-amber-500" />
@@ -283,10 +364,16 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
         ) : (
           <div className="py-6 text-center text-xs text-slate-400">No solar data available</div>
         )}
-      </div>
+      </motion.div>
 
       {/* 5. Humidity & Dew Point Card */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20px" }}
+        transition={{ delay: 0.5, duration: 0.4 }}
+        className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between"
+      >
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
             <Droplets className="h-4 w-4 text-blue-500" />
@@ -326,10 +413,16 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             Apparent temperature: {current.apparentTemperature}°
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 6. Pressure, Visibility & Precipitation Volume */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-20px" }}
+        transition={{ delay: 0.6, duration: 0.4 }}
+        className="rounded-3xl border border-slate-200/80 bg-white/80 p-5 shadow-xs backdrop-blur-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80 flex flex-col justify-between"
+      >
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
             <Gauge className="h-4 w-4 text-violet-500" />
@@ -369,7 +462,16 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             {today ? today.precipitationSum : 0} {unit === 'celsius' ? 'mm' : 'in'}
           </span>
         </div>
-      </div>
+      </motion.div>
     </div>
+  ) : (
+    <PastTrendsView
+      latitude={location.latitude}
+      longitude={location.longitude}
+      locationName={location.name}
+      unit={unit}
+    />
+  )}
+</div>
   );
 };

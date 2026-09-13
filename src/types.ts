@@ -175,3 +175,16 @@ export interface MoonPhaseInfo {
   description: string;
 }
 
+export interface SavedLocationNotificationSettings {
+  enabled: boolean;
+  morningTipEnabled: boolean;
+  severeAlertsOnly: boolean; // "enable notifications only when there is an alarming or odd weather condition, if not just send one notification in the morning with the tip of the day"
+}
+
+export interface SavedLocationsDbState {
+  locations: GeoLocation[];
+  notificationSettings: SavedLocationNotificationSettings;
+  lastMorningTipDate?: string;
+  lastAlarmingAlertTimestamp?: number;
+}
+

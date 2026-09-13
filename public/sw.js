@@ -305,6 +305,23 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'TRIGGER_WEATHER_SYNC') {
     syncCachedWeatherData('client-manual-trigger');
   }
+
+  // 4. Smart weather condition notification dispatch (odd/alarming condition or morning tip)
+  if (event.data.type === 'SMART_WEATHER_NOTIFICATION') {
+    const { title, body, tag, silent, data } = event.data;
+    if (self.registration && self.registration.showNotification) {
+      event.waitUntil(
+        self.registration.showNotification(title || 'Weather Notification', {
+          body: body || '',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          silent: !!silent,
+          tag: tag || 'smart-weather-notification',
+          data: data || {},
+        })
+      );
+    }
+  }
 });
 
 // Handle notification click: focus app window

@@ -26,7 +26,10 @@ export function useAQI(lat: number, lon: number, defaultAirQuality?: AirQualityD
       try {
         if (source === 'hyperlocal') {
           // PurpleAir
-          const res = await fetch(`/api/aqi/purpleair?lat=${lat}&lon=${lon}`);
+          const clientKey = localStorage.getItem('gw_purpleair_key') || '';
+          const res = await fetch(`/api/aqi/purpleair?lat=${lat}&lon=${lon}`, {
+            headers: clientKey ? { 'x-purpleair-key': clientKey } : undefined,
+          });
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             throw new Error(errData.error || 'Failed to fetch Hyperlocal AQI');
