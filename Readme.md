@@ -199,6 +199,30 @@ Because the application is a client-side SPA with zero server dependencies:
 
 ---
 
+## 🚀 Automated GitHub Release CI/CD
+
+ClimaCast is equipped with an automated Continuous Integration and Continuous Deployment pipeline configured via **GitHub Actions** (`.github/workflows/release.yml`).
+
+Every push to the `main` or `master` branch (or semantic version tag `v*`) automatically builds, verifies, packages, and publishes a new public GitHub release with all variants ready for instant public download:
+
+| Variant Artifact | Description | Target Use Case |
+| :--- | :--- | :--- |
+| **🌐 `climacast-web-pwa-*.zip`** | Static Web & PWA Bundle | Deploy directly to GitHub Pages, Netlify, Cloudflare Pages, or Vercel. Includes service worker and offline assets. |
+| **🧩 `climacast-chrome-extension-*.zip`** | Manifest V3 Chrome Extension | Extract and load unpacked into `chrome://extensions` or publish directly to the Chrome Web Store. |
+| **🖥️ `climacast-fullstack-server-*.tar.gz` / `.zip`** | Standalone Node.js & Docker Server | Production server bundle (`dist/server.cjs`) with `Dockerfile`, ready for Cloud Run, AWS, or VPS. |
+| **📱 `climacast-capacitor-mobile-*.zip`** | Capacitor Mobile Source Package | Native Android & iOS source project ready for Android Studio (`npx cap open android`) and Xcode. |
+| **🔒 `checksums.txt`** | SHA-256 Checksums | Cryptographic hashes for all published artifacts. |
+
+### Local Packaging
+Developers can assemble and test all variants locally at any time:
+```bash
+# Compile and build all 4 release packages
+npm run package:all
+```
+For full details, see [`docs/ci-cd-release-guide.md`](docs/ci-cd-release-guide.md).
+
+---
+
 ## ⚖️ Attribution & License
 
 - Weather forecasts, geocoding, and air quality models provided by **[Open-Meteo](https://open-meteo.com/)** under Attribution 4.0 International (CC BY 4.0).

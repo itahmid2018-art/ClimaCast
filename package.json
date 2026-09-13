@@ -1,7 +1,7 @@
 {
-  "name": "react-example",
+  "name": "climacast",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -9,6 +9,7 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
+    "package:all": "node scripts/package-variants.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

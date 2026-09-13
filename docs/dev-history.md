@@ -214,6 +214,7 @@ A meteorological cockpit should never lock a user behind a wall of required API 
 | **38** | **Personalized Pinned Widgets Section** | Created new 'Widgets' section on main page for pinning high-priority data points (Air Quality, Solar Arc, UV, Wind, Humidity, Pressure, Moon Phase, Precipitation) with interactive customization modal. | `PinnedWidgetsSection.tsx`, `CustomizeWidgetsModal.tsx`, `WeatherDetailsGrid.tsx`, `App.tsx` |
 | **39** | **Developers Modal Accessibility & Contrast Fix** | Redesigned the tab strip into a high-contrast segmented pill grid, resolved dark mode hover contrast bug, and elevated text/code contrast across all developer tabs to exceed WCAG AAA standards. | `CrossPlatformGuideModal.tsx` |
 | **40** | **CJS Build Warning Elimination** | Resolved esbuild `[empty-import-meta]` warning during backend bundling by removing unused `import.meta.url` and utilizing standard `process.cwd()` for database paths. | `server.ts` |
+| **41** | **Automated GitHub Release CI/CD & Multi-Platform Variants** | Built complete GitHub Actions release pipeline (`.github/workflows/release.yml`) triggering on commits to main, assembling 4 public release variants (Web PWA, Chrome Extension, Server Docker, Capacitor Mobile) with SHA-256 checksums and automated release notes. | `.github/workflows/release.yml`, `scripts/package-variants.js`, `Dockerfile`, `docs/ci-cd-release-guide.md` |
 
 ---
 

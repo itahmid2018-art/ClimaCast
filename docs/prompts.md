@@ -355,6 +355,19 @@ Along with dummy icons where the user can download the app from respective app s
 - **Resolution**: Removed the unnecessary `import.meta.url` expression and the unused `fileURLToPath` import from `url`. Updated the database file path resolution to use standard Node.js `path.join(process.cwd(), 'db.json')`, which matches the project root resolution used by the Vite middleware static file server.
 - **Verification**: Re-ran `npm run build` and `compile_applet`. The build completed cleanly in 7ms with 0 warnings.
 
+## Turn 41
+**User:** Please create a release CI/CD for Github such that every time we commit to github, it builds and creates a release version and makes all variants available for public.
+**Agent Response:** Created a complete automated release CI/CD pipeline for GitHub Actions along with multi-platform variant packaging:
+- **GitHub Actions Release Pipeline (`.github/workflows/release.yml`)**: Configured an automated workflow triggered on every push to `main` or `master` (and version tags `v*`). It lints the code, compiles the production full-stack build, automatically increments the build release tag (e.g. `v1.0.0-build.X`), tags the commit, creates a public GitHub Release via `softprops/action-gh-release@v2`, and deploys the web version to GitHub Pages.
+- **Multi-Platform Variant Packaging Engine (`scripts/package-variants.js`)**: Built an automated packaging script (`npm run package:all`) that bundles and compresses all 4 project variants with dedicated README guides and SHA-256 checksums:
+  1. `climacast-web-pwa-*.zip`: Production SPA with PWA manifest and service worker, ready for static hosting.
+  2. `climacast-chrome-extension-*.zip`: Ready-to-load Google Chrome Manifest V3 extension popup with version synchronization.
+  3. `climacast-fullstack-server-*.tar.gz` and `.zip`: Standalone Node.js (`dist/server.cjs`) and Docker production server bundle.
+  4. `climacast-capacitor-mobile-*.zip`: Native Android and iOS source bundle ready for Capacitor CLI and Android Studio / Xcode.
+- **Containerization Support**: Added production `Dockerfile` and `.dockerignore` for containerized server deployments.
+- **Documentation & Instructions**: Documented the release architecture in `/docs/ci-cd-release-guide.md` and added release pipeline usage to `Readme.md`.
+
+
 
 
 
