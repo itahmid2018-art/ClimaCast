@@ -206,6 +206,26 @@ A meteorological cockpit should never lock a user behind a wall of required API 
 | **30** | **Persistent Saved Locations & Smart Notifications** | Added preferred locations management with server `db.json` persistence and conditional notifications (alarming conditions or morning tip of the day). | `db.json`, `server.ts`, `SavedLocationsModal.tsx`, `savedLocationsApi.ts`, `App.tsx`, `sw.js` |
 | **31** | **Sticky Scroll-Collapse Header** | Transformed header on scroll into a clean single row retaining only logo and search bar. | `WeatherHeader.tsx` |
 | **32** | **GitHub Push Security & Git Hygiene** | Sanitized `db.json` secrets preventing GitHub push protection blocking and resolved push error causes. | `db.json` |
+| **33** | **Git Integration Guide & Documentation** | Authored comprehensive GitHub Push & Troubleshooting Guide covering push protection and ref constraints. | `/docs/github-integration-guide.md`, `/docs/dev-history.md` |
+| **34** | **Jitter-Free Sticky Header Stabilization** | Eliminated scroll stutter and layout thrashing via dual-threshold hysteresis (80px/25px), `requestAnimationFrame` render batching, and GPU transform acceleration. | `WeatherHeader.tsx` |
+| **35** | **Navigation & About Refinement** | Removed inline Open-Meteo attribution from footer, renamed actions to 'Developers', 'About', and 'Add to Home' with representative icons (`Code2`, `Info`, `Home`), and generated `about.html` from `Readme.md` highlighting Open-Meteo data precision. | `App.tsx`, `public/about.html`, `about.html`, `server.ts` |
+| **36** | **About ClimaCast Narrative Update** | Updated the hero copy in `public/about.html` with the new tagline and value proposition ("Know your weather before it knows you..."). | `public/about.html` |
+| **37** | **App Description & Store Downloads** | Added the comprehensive "App description" section, 6-point "Why ClimaCast?" feature pillars, and store download badges for Apple App Store, Google Play, PWA Add to Home, and Chrome Web Store. | `public/about.html` |
+| **38** | **Personalized Pinned Widgets Section** | Created new 'Widgets' section on main page for pinning high-priority data points (Air Quality, Solar Arc, UV, Wind, Humidity, Pressure, Moon Phase, Precipitation) with interactive customization modal. | `PinnedWidgetsSection.tsx`, `CustomizeWidgetsModal.tsx`, `WeatherDetailsGrid.tsx`, `App.tsx` |
+| **39** | **Developers Modal Accessibility & Contrast Fix** | Redesigned the tab strip into a high-contrast segmented pill grid, resolved dark mode hover contrast bug, and elevated text/code contrast across all developer tabs to exceed WCAG AAA standards. | `CrossPlatformGuideModal.tsx` |
+| **40** | **CJS Build Warning Elimination** | Resolved esbuild `[empty-import-meta]` warning during backend bundling by removing unused `import.meta.url` and utilizing standard `process.cwd()` for database paths. | `server.ts` |
+
+---
+
+## Chapter 11: The Personalized Sky (Pinned Widgets & Quick Access)
+
+### Direct Atmospheric Priority
+In **Turn 38**, we solved a foundational dashboard challenge: every person prioritizes different weather metrics. A runner needs real-time Air Quality and Wind; an astronomer watches the Moon Phase; a commuter tracks Precipitation risk; and a gardener follows the Solar Arc.
+
+- **Immediate High-Priority Section**: We placed the new **Pinned Widgets** section directly beneath the Current Weather Hero, delivering sub-second visibility to pinned metrics without requiring users to scroll past the extended forecast or radar maps.
+- **Default Focus on Air Quality & Solar Arc**: Satisfied the user's primary specification by pre-pinning Air Quality and Solar Arc out of the box, with full support for up to 8 customizable weather metrics.
+- **Bi-Directional Pinning Interaction**: Users can toggle pin states directly from the header of any card in the main diagnostics grid, via the dedicated unpin button on pinned widget cards, or within the centralized `CustomizeWidgetsModal`.
+- **Zero-Friction Local Persistence**: All pinned configurations are seamlessly saved to `localStorage` under `gw_pinned_widgets`, with animated re-ordering and zero layout stutter.
 
 ---
 
@@ -221,6 +241,16 @@ Weather is personal. People don't just watch the sky above their head; they trac
   - **Alarming & Odd Weather Watch**: Real-time atmospheric analysis across all saved locations triggers notifications *only* when severe thresholds are breached—including thunderstorms with lightning strikes, freezing rain with ice glaze, heavy snow squalls, damaging gusts ($\ge 65\text{ km/h}$), extreme heat ($\ge 40^\circ\text{C}$), or flash torrential downpours ($\ge 15\text{ mm/h}$).
   - **The Peaceful Morning Tip**: If all saved locations remain atmospheric calm and nominal, the system remains silent throughout the day—dispatching only a single morning notification (between 6 AM and 11 AM) containing the personalized **Tip of the Day** for the primary preferred location.
   - **Service Worker & PWA Integration**: Integrated with `public/sw.js` via `SMART_WEATHER_NOTIFICATION`, ensuring background delivery on Android, iOS PWA, and desktop browsers.
+
+---
+
+## Chapter 10: The Git Handshake (Push Protection & Open-Source Readiness)
+
+### Guarding Credentials at the Gate
+In **Turns 32 and 33**, as ClimaCast was prepared for remote export to GitHub, an essential lesson in modern cloud-native git hygiene unfolded:
+- **The Silent Gatekeeper**: GitHub's automated *Push Protection & Secret Scanning* rejected commits containing raw API credentials in `db.json` with an opaque `invalid_argument` error.
+- **Permanent Remediation**: We sterilized the repository tree, ensuring no credentials or tokens reside in plain JSON files. All sensitive connections are sourced solely through secure runtime environment variables.
+- **Documentation & Preservation**: A complete diagnostic guide was established at `/docs/github-integration-guide.md`, detailing ref validation, remote branch divergence, and multi-session OAuth handling for future iterations.
 
 ---
 

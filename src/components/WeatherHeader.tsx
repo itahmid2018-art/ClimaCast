@@ -100,20 +100,38 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
 
   const isFav = favorites.some((f) => f.id === currentLocation.id || (Math.abs(f.latitude - currentLocation.latitude) < 0.05 && Math.abs(f.longitude - currentLocation.longitude) < 0.05));
 
-  // Scroll detection to collapse header to logo + search bar
+  // Scroll detection to collapse header to logo + search bar with hysteresis & requestAnimationFrame
+  const isScrolledRef = useRef(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const offset = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      setIsScrolled(offset > 40);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const offset = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+          // Hysteresis buffer:
+          // To collapse: Must scroll down past 80px
+          // To expand: Must scroll back up near top (< 25px)
+          // Between 25px and 80px: Retain previous state to completely prevent jitter and oscillation
+          const shouldCollapse = isScrolledRef.current ? offset > 25 : offset > 80;
+          
+          if (shouldCollapse !== isScrolledRef.current) {
+            isScrolledRef.current = shouldCollapse;
+            setIsScrolled(shouldCollapse);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
     return () => {
-      window.removeEventListener('scroll', handleScroll, { capture: true });
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -251,7 +269,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
 
   return (
     <header
-      className={`sticky top-0 z-50 w-full px-4 md:px-6 transition-all duration-200 backdrop-blur-xl ${
+      className={`sticky top-0 z-50 w-full px-4 md:px-6 transition-all duration-200 ease-out backdrop-blur-xl transform-gpu ${
         isScrolled
           ? 'py-2.5 bg-white/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80 shadow-md'
           : 'pt-4 pb-2 bg-slate-50/80 dark:bg-slate-950/80 border-b border-transparent shadow-xs'
@@ -259,7 +277,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
     >
       {isScrolled ? (
         /* Scrolled state: strictly keep only the logo and next to it the search bar. Rest hides as normal. */
-        <div className="mx-auto flex max-w-6xl items-center gap-3 md:gap-4 w-full animate-in fade-in duration-150">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 md:gap-4 w-full transition-opacity duration-200">
           {/* Logo */}
           <button
             type="button"
@@ -282,7 +300,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
         </div>
       ) : (
         /* Unscrolled Normal State */
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 animate-in fade-in duration-150">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 transition-opacity duration-200">
           {/* Top Control Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Logo / Title + Astronomical Moon Phase */}

@@ -188,3 +188,14 @@ export interface SavedLocationsDbState {
   lastAlarmingAlertTimestamp?: number;
 }
 
+export type WeatherWidgetId =
+  | 'air-quality'
+  | 'solar-arc'
+  | 'uv-index'
+  | 'wind'
+  | 'humidity'
+  | 'pressure'
+  | 'moon-phase'
+  | 'precipitation';
+
+

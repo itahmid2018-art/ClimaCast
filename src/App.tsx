@@ -11,6 +11,7 @@ import {
   ThemeMode,
   WeatherInsightData,
   SavedLocationNotificationSettings,
+  WeatherWidgetId,
 } from './types';
 import { fetchWeather, reverseGeocode } from './services/weatherApi';
 import {
@@ -24,6 +25,12 @@ import { CurrentWeatherHero } from './components/CurrentWeatherHero';
 import { HourlyForecastRibbon } from './components/HourlyForecastRibbon';
 import { DailyForecastList } from './components/DailyForecastList';
 import { WeatherDetailsGrid } from './components/WeatherDetailsGrid';
+import { PinnedWidgetsSection } from './components/PinnedWidgetsSection';
+import {
+  CustomizeWidgetsModal,
+  DEFAULT_PINNED_WIDGETS,
+  AVAILABLE_WIDGETS,
+} from './components/CustomizeWidgetsModal';
 import { CrossPlatformGuideModal } from './components/CrossPlatformGuideModal';
 import { WeatherAlertsBanner } from './components/WeatherAlertsBanner';
 import { WeatherInsightsSection } from './components/WeatherInsightsSection';
@@ -47,6 +54,9 @@ import {
   Smartphone,
   Download,
   CloudCheck,
+  Home,
+  Code2,
+  Info,
 } from 'lucide-react';
 
 const DEFAULT_LOCATION: GeoLocation = {
@@ -199,6 +209,57 @@ export default function App() {
   
   const [insights, setInsights] = useState<WeatherInsightData | null>(null);
   const [isTipClosed, setIsTipClosed] = useState(false);
+
+  // Pinned Weather Widgets State
+  const [pinnedWidgets, setPinnedWidgets] = useState<WeatherWidgetId[]>(() => {
+    try {
+      const saved = localStorage.getItem('gw_pinned_widgets');
+      return saved ? JSON.parse(saved) : DEFAULT_PINNED_WIDGETS;
+    } catch {
+      return DEFAULT_PINNED_WIDGETS;
+    }
+  });
+  const [showWidgetModal, setShowWidgetModal] = useState(false);
+
+  const handleTogglePin = useCallback((id: WeatherWidgetId) => {
+    setPinnedWidgets((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      try {
+        localStorage.setItem('gw_pinned_widgets', JSON.stringify(next));
+      } catch (err) {
+        console.warn('Failed to save pinned widgets', err);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleResetDefaultWidgets = useCallback(() => {
+    setPinnedWidgets(DEFAULT_PINNED_WIDGETS);
+    try {
+      localStorage.setItem('gw_pinned_widgets', JSON.stringify(DEFAULT_PINNED_WIDGETS));
+    } catch (err) {
+      console.warn(err);
+    }
+  }, []);
+
+  const handlePinAllWidgets = useCallback(() => {
+    const allIds = AVAILABLE_WIDGETS.map((w) => w.id);
+    setPinnedWidgets(allIds);
+    try {
+      localStorage.setItem('gw_pinned_widgets', JSON.stringify(allIds));
+    } catch (err) {
+      console.warn(err);
+    }
+  }, []);
+
+  const handleClearAllWidgets = useCallback(() => {
+    setPinnedWidgets([]);
+    try {
+      localStorage.setItem('gw_pinned_widgets', JSON.stringify([]));
+    } catch (err) {
+      console.warn(err);
+    }
+  }, []);
 
   // Sync dark class on HTML root
   useEffect(() => {
@@ -507,6 +568,15 @@ export default function App() {
               {/* Current Hero */}
               <CurrentWeatherHero weather={weather} unit={unit} />
 
+              {/* Pinned Widgets Section (Quick Access) */}
+              <PinnedWidgetsSection
+                weather={weather}
+                unit={unit}
+                pinnedWidgets={pinnedWidgets}
+                onTogglePin={handleTogglePin}
+                onOpenCustomize={() => setShowWidgetModal(true)}
+              />
+
               {/* Gemini-Powered Weather Insights Section */}
               <WeatherInsightsSection 
                 weather={weather} 
@@ -532,28 +602,23 @@ export default function App() {
               />
 
               {/* Bento Grid: Air Quality, UV, Wind, Solar Arc, Humidity, Pressure */}
-              <WeatherDetailsGrid weather={weather} unit={unit} />
+              <WeatherDetailsGrid
+                weather={weather}
+                unit={unit}
+                pinnedWidgets={pinnedWidgets}
+                onTogglePin={handleTogglePin}
+              />
             </>
           ) : null}
         </main>
       </div>
 
-      {/* Global Footer & Open-Meteo Attribution */}
-      <footer className="w-full border-t border-slate-200/80 bg-white/70 py-6 px-4 text-center text-xs text-slate-500 backdrop-blur-xs transition-colors dark:border-slate-800/80 dark:bg-slate-900/70 dark:text-slate-400">
+      {/* Global Footer */}
+      <footer className="w-full border-t border-slate-200/80 bg-white/70 py-5 px-4 text-center text-xs text-slate-500 backdrop-blur-xs transition-colors dark:border-slate-800/80 dark:bg-slate-900/70 dark:text-slate-400">
         <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 font-medium text-slate-600 dark:text-slate-400">
             <CloudSun className="h-4 w-4 text-blue-500" />
-            <span>
-              Weather data provided with high precision by{' '}
-              <a
-                href="https://open-meteo.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
-              >
-                Open-Meteo
-              </a>
-            </span>
+            <span>ClimaCast Weather Intelligence</span>
           </div>
 
           {/* Action links */}
@@ -562,22 +627,32 @@ export default function App() {
               id="footer-install-pwa-btn"
               type="button"
               onClick={() => setShowGuideModal(true)}
-              className="flex items-center gap-1.5 font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              className="flex items-center gap-1.5 font-medium text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors"
             >
-              <Download className="h-3.5 w-3.5" />
-              <span>Install PWA (Add to Home Screen)</span>
+              <Home className="h-3.5 w-3.5 text-blue-500" />
+              <span>Add to Home</span>
             </button>
-            <span>•</span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
             <button
+              id="footer-developers-btn"
               type="button"
               onClick={() => setShowGuideModal(true)}
-              className="flex items-center gap-1 font-medium text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400"
+              className="flex items-center gap-1.5 font-medium text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors"
             >
-              <Smartphone className="h-3.5 w-3.5" />
-              <span>Multi-Platform Guide</span>
+              <Code2 className="h-3.5 w-3.5 text-indigo-500" />
+              <span>Developers</span>
             </button>
-            <span>•</span>
-            <span className="text-slate-400">ClimaCast Platform</span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <a
+              id="footer-about-link"
+              href="/about.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 font-medium text-slate-700 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors"
+            >
+              <Info className="h-3.5 w-3.5 text-emerald-500" />
+              <span>About</span>
+            </a>
           </div>
         </div>
       </footer>
@@ -618,6 +693,17 @@ export default function App() {
         location={currentLocation}
         weather={weather || undefined}
         unit={unit}
+      />
+
+      {/* Customize Widgets Modal */}
+      <CustomizeWidgetsModal
+        isOpen={showWidgetModal}
+        onClose={() => setShowWidgetModal(false)}
+        pinnedWidgets={pinnedWidgets}
+        onToggleWidget={handleTogglePin}
+        onResetDefaults={handleResetDefaultWidgets}
+        onPinAll={handlePinAllWidgets}
+        onClearAll={handleClearAllWidgets}
       />
     </div>
   );

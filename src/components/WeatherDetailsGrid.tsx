@@ -26,14 +26,23 @@ import {
   AlertTriangle,
   LayoutGrid,
   TrendingUp,
+  Pin,
 } from 'lucide-react';
+import { WeatherWidgetId } from '../types';
 
 interface WeatherDetailsGridProps {
   weather: ProcessedWeather;
   unit: TemperatureUnit;
+  pinnedWidgets?: WeatherWidgetId[];
+  onTogglePin?: (id: WeatherWidgetId) => void;
 }
 
-export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather, unit }) => {
+export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({
+  weather,
+  unit,
+  pinnedWidgets,
+  onTogglePin,
+}) => {
   const { current, daily, airQuality: defaultAirQuality, location } = weather;
   const today = daily[0];
 
@@ -125,11 +134,28 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
               <ShieldCheck className="h-4 w-4 text-emerald-500" />
               Air Quality (AQI)
             </span>
-            {airQuality && !isAqiLoading && (
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${airQuality.qualityColor} bg-slate-100 dark:bg-slate-800`}>
-                {airQuality.qualityLevel}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {airQuality && !isAqiLoading && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${airQuality.qualityColor} bg-slate-100 dark:bg-slate-800`}>
+                  {airQuality.qualityLevel}
+                </span>
+              )}
+              {onTogglePin && (
+                <button
+                  type="button"
+                  onClick={() => onTogglePin('air-quality')}
+                  className={`rounded-lg p-1 transition ${
+                    pinnedWidgets?.includes('air-quality')
+                      ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400'
+                      : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                  }`}
+                  title={pinnedWidgets?.includes('air-quality') ? 'Pinned to Quick Access (click to unpin)' : 'Pin to Quick Access'}
+                  aria-label="Pin Air Quality"
+                >
+                  <Pin className="h-3.5 w-3.5 fill-current" />
+                </button>
+              )}
+            </div>
           </div>
           
           {/* AQI Source Toggle */}
@@ -215,9 +241,26 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             <Sun className="h-4 w-4 text-amber-500" />
             UV Index
           </span>
-          <span className={`text-xs font-bold ${uvRating.color}`}>
-            {uvRating.text}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-bold ${uvRating.color}`}>
+              {uvRating.text}
+            </span>
+            {onTogglePin && (
+              <button
+                type="button"
+                onClick={() => onTogglePin('uv-index')}
+                className={`rounded-lg p-1 transition ${
+                  pinnedWidgets?.includes('uv-index')
+                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                }`}
+                title={pinnedWidgets?.includes('uv-index') ? 'Pinned to Quick Access (click to unpin)' : 'Pin to Quick Access'}
+                aria-label="Pin UV Index"
+              >
+                <Pin className="h-3.5 w-3.5 fill-current" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 flex flex-col gap-3">
@@ -261,9 +304,26 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             <Wind className="h-4 w-4 text-teal-500" />
             Wind & Direction
           </span>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {windDirName} ({current.windDirection}°)
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {windDirName} ({current.windDirection}°)
+            </span>
+            {onTogglePin && (
+              <button
+                type="button"
+                onClick={() => onTogglePin('wind')}
+                className={`rounded-lg p-1 transition ${
+                  pinnedWidgets?.includes('wind')
+                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                }`}
+                title={pinnedWidgets?.includes('wind') ? 'Pinned to Quick Access (click to unpin)' : 'Pin to Quick Access'}
+                aria-label="Pin Wind"
+              >
+                <Pin className="h-3.5 w-3.5 fill-current" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-4">
@@ -314,9 +374,26 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             <Sunrise className="h-4 w-4 text-amber-500" />
             Sunrise & Sunset
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            {current.isDay ? 'Daytime' : 'Nighttime'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {current.isDay ? 'Daytime' : 'Nighttime'}
+            </span>
+            {onTogglePin && (
+              <button
+                type="button"
+                onClick={() => onTogglePin('solar-arc')}
+                className={`rounded-lg p-1 transition ${
+                  pinnedWidgets?.includes('solar-arc')
+                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                }`}
+                title={pinnedWidgets?.includes('solar-arc') ? 'Pinned to Quick Access (click to unpin)' : 'Pin to Quick Access'}
+                aria-label="Pin Solar Arc"
+              >
+                <Pin className="h-3.5 w-3.5 fill-current" />
+              </button>
+            )}
+          </div>
         </div>
 
         {today ? (
@@ -379,9 +456,26 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             <Droplets className="h-4 w-4 text-blue-500" />
             Humidity & Comfort
           </span>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Dew point {dewPoint}°
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Dew point {dewPoint}°
+            </span>
+            {onTogglePin && (
+              <button
+                type="button"
+                onClick={() => onTogglePin('humidity')}
+                className={`rounded-lg p-1 transition ${
+                  pinnedWidgets?.includes('humidity')
+                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                }`}
+                title={pinnedWidgets?.includes('humidity') ? 'Pinned to Quick Access (click to unpin)' : 'Pin to Quick Access'}
+                aria-label="Pin Humidity"
+              >
+                <Pin className="h-3.5 w-3.5 fill-current" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 flex flex-col gap-3">
@@ -428,7 +522,24 @@ export const WeatherDetailsGrid: React.FC<WeatherDetailsGridProps> = ({ weather,
             <Gauge className="h-4 w-4 text-violet-500" />
             Pressure & Visibility
           </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">Barometric</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Barometric</span>
+            {onTogglePin && (
+              <button
+                type="button"
+                onClick={() => onTogglePin('pressure')}
+                className={`rounded-lg p-1 transition ${
+                  pinnedWidgets?.includes('pressure')
+                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400'
+                    : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300'
+                }`}
+                title={pinnedWidgets?.includes('pressure') ? 'Pinned to Quick Access (click to unpin)' : 'Pin to Quick Access'}
+                aria-label="Pin Pressure"
+              >
+                <Pin className="h-3.5 w-3.5 fill-current" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-4">

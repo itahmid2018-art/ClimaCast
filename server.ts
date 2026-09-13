@@ -5,7 +5,6 @@
 
 import express, { Request, Response } from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
@@ -13,20 +12,12 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
 
-const getDirname = () => {
-  if (typeof __dirname !== 'undefined') {
-    return __dirname;
-  }
-  return path.dirname(fileURLToPath(import.meta.url));
-};
-const _dirname = getDirname();
-
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
 
-const DB_FILE = path.join(_dirname, 'db.json');
+const DB_FILE = path.join(process.cwd(), 'db.json');
 
 // Ensure db.json exists
 if (!fs.existsSync(DB_FILE)) {
@@ -694,6 +685,19 @@ app.get('/api/weather/tiles/:layer/:z/:x/:y.png', async (req: Request, res: Resp
 });
 
 async function startServer() {
+  // Serve About page
+  app.get('/about.html', (_req: Request, res: Response) => {
+    const pubPath = path.join(process.cwd(), 'public', 'about.html');
+    if (fs.existsSync(pubPath)) {
+      return res.sendFile(pubPath);
+    }
+    const distAbout = path.join(process.cwd(), 'dist', 'about.html');
+    if (fs.existsSync(distAbout)) {
+      return res.sendFile(distAbout);
+    }
+    res.redirect('/');
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
