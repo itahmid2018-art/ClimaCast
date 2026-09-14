@@ -14,8 +14,22 @@ import {
   ExternalLink,
   Sparkles,
   Zap,
+  Globe,
+  Compass,
+  MapPin,
+  Database,
+  ArrowRight,
+  BookmarkPlus,
+  Trash2,
 } from 'lucide-react';
-import { TemperatureUnit, ThemeMode } from '../types';
+import { TemperatureUnit, ThemeMode, GeoLocation, SavedPostalPin } from '../types';
+import {
+  fetchUserProfile,
+  saveUserProfile,
+  resolvePostalLocation,
+  fetchWttrWeather,
+  deletePostalPin,
+} from '../services/userProfileApi';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -25,6 +39,7 @@ interface SettingsModalProps {
   onToggleTheme: (theme: ThemeMode) => void;
   platformView: 'web' | 'mobile' | 'extension';
   onSelectPlatformView: (view: 'web' | 'mobile' | 'extension') => void;
+  onSelectLocation?: (loc: GeoLocation) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -35,8 +50,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onToggleTheme,
   platformView,
   onSelectPlatformView,
+  onSelectLocation,
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'weather'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'region' | 'ai' | 'weather'>('general');
+
+  // Regional Profile State (persisted in user-db.json)
+  const [profileCountry, setProfileCountry] = useState('United States');
+  const [profileCountryCode, setProfileCountryCode] = useState('US');
+  const [profileState, setProfileState] = useState('California');
+  const [profileDistrict, setProfileDistrict] = useState('');
+  const [profileCity, setProfileCity] = useState('San Francisco');
+  const [profileZipPin, setProfileZipPin] = useState('94103');
+  const [profileAutoResolve, setProfileAutoResolve] = useState(true);
+  const [profileWttrMode, setProfileWttrMode] = useState(true);
+  const [profileLastUpdated, setProfileLastUpdated] = useState<string | null>(null);
+  const [profileSaveStatus, setProfileSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [profileTestStatus, setProfileTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testResultSummary, setTestResultSummary] = useState<string | null>(null);
+  const [savedPinsList, setSavedPinsList] = useState<SavedPostalPin[]>([]);
 
   const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | 'openrouter'>('gemini');
   const [geminiKey, setGeminiKey] = useState('');
@@ -102,6 +133,80 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     return () => clearTimeout(timeoutId);
   }, [radarMapKey]);
 
+  // Load Regional Profile from user-db.json
+  useEffect(() => {
+    const loadProfileData = async () => {
+      try {
+        const data = await fetchUserProfile();
+        if (data && data.profile) {
+          setProfileCountry(data.profile.country || 'United States');
+          setProfileCountryCode(data.profile.countryCode || 'US');
+          setProfileState(data.profile.state || 'California');
+          setProfileDistrict(data.profile.district || '');
+          setProfileCity(data.profile.city || '');
+          setProfileZipPin(data.profile.defaultZipPin || '94103');
+          setProfileAutoResolve(data.profile.autoResolveOnZipInput !== false);
+          setProfileWttrMode(data.profile.wttrPrecisionMode !== false);
+          setProfileLastUpdated(data.profile.lastUpdated || null);
+          setSavedPinsList(data.savedZipPins || []);
+        }
+      } catch (err) {
+        console.warn('Failed to load user-db.json profile in SettingsModal', err);
+      }
+    };
+    loadProfileData();
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setProfileSaveStatus('saving');
+    try {
+      const updated = await saveUserProfile({
+        country: profileCountry.trim(),
+        countryCode: profileCountryCode.trim().toUpperCase(),
+        state: profileState.trim(),
+        district: profileDistrict.trim(),
+        city: profileCity.trim(),
+        defaultZipPin: profileZipPin.trim(),
+        autoResolveOnZipInput: profileAutoResolve,
+        wttrPrecisionMode: profileWttrMode,
+      });
+      setProfileLastUpdated(updated.profile.lastUpdated || new Date().toISOString());
+      setProfileSaveStatus('saved');
+      setTimeout(() => setProfileSaveStatus('idle'), 3000);
+    } catch (err) {
+      setProfileSaveStatus('error');
+      setTimeout(() => setProfileSaveStatus('idle'), 3500);
+    }
+  };
+
+  const handleTestPrediction = async () => {
+    if (!profileZipPin.trim()) return;
+    setProfileTestStatus('testing');
+    setTestResultSummary(null);
+    try {
+      const geo = await resolvePostalLocation(profileZipPin.trim(), profileCountry, profileState);
+      const wttr = await fetchWttrWeather(profileZipPin.trim()).catch(() => null);
+      setProfileTestStatus('success');
+      setTestResultSummary(
+        `Resolved: ${geo.location.name} (${geo.location.latitude.toFixed(3)}°, ${geo.location.longitude.toFixed(3)}°) via ${geo.source}${
+          wttr ? ` • WTTR: ${wttr.current.tempC}°C, ${wttr.current.weatherDesc}` : ''
+        }`
+      );
+    } catch (err: any) {
+      setProfileTestStatus('error');
+      setTestResultSummary(err.message || 'Lookup failed.');
+    }
+  };
+
+  const handleDeleteSavedPin = async (code: string) => {
+    try {
+      const updated = await deletePostalPin(code);
+      setSavedPinsList(updated);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const saveAiProvider = (provider: 'gemini' | 'openai' | 'anthropic' | 'openrouter') => {
     setAiProvider(provider);
     localStorage.setItem('gw_ai_provider', provider);
@@ -162,6 +267,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Settings className="h-4 w-4" /> General
             </button>
             <button
+              onClick={() => setActiveTab('region')}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap ${activeTab === 'region' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+            >
+              <Globe className="h-4 w-4" /> Country & Region
+            </button>
+            <button
               onClick={() => setActiveTab('ai')}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap ${activeTab === 'ai' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
             >
@@ -217,6 +328,325 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="text-sm text-slate-700 dark:text-slate-200">Chrome Extension Layout</span>
                     </label>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'region' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {/* Information Banner */}
+                <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/50 p-4 border border-blue-100 dark:from-blue-950/30 dark:to-indigo-950/20 dark:border-blue-900/50">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
+                      <Globe className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-blue-950 dark:text-blue-200 uppercase tracking-wide">
+                          user-db.json Regional Persistence & WTTR.in
+                        </h4>
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-full border border-emerald-200 dark:border-emerald-800">
+                          Active Persistence
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-900/80 dark:text-blue-300/90 leading-relaxed">
+                        Specify your <strong>Country</strong>, <strong>State</strong>, and <strong>District</strong>. These settings are stored directly in server-side <code>user-db.json</code>. ClimaCast utilizes this regional context to resolve precise hyper-local weather predictions from postal ZIP and PIN codes similar to WTTR.in.
+                      </p>
+                      {profileLastUpdated && (
+                        <p className="text-[11px] text-blue-600 dark:text-blue-400 font-mono pt-1">
+                          Last synchronized: {new Date(profileLastUpdated).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Country and State Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center justify-between">
+                    <span>Geographic Boundary Parameters</span>
+                    <span className="text-xs font-normal text-slate-500">Persisted in user-db.json</span>
+                  </h3>
+
+                  {/* Country Field */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Country
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <select
+                        value={profileCountry}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setProfileCountry(val);
+                          const codeMap: Record<string, string> = {
+                            'United States': 'US',
+                            'India': 'IN',
+                            'United Kingdom': 'GB',
+                            'Canada': 'CA',
+                            'Australia': 'AU',
+                            'Germany': 'DE',
+                            'France': 'FR',
+                            'Japan': 'JP',
+                            'Spain': 'ES',
+                            'Italy': 'IT',
+                            'Brazil': 'BR',
+                            'Mexico': 'MX',
+                          };
+                          if (codeMap[val]) {
+                            setProfileCountryCode(codeMap[val]);
+                          }
+                          // Set sensible state defaults
+                          if (val === 'United States' && !profileState) setProfileState('California');
+                          if (val === 'India' && !profileState) setProfileState('Karnataka');
+                          if (val === 'United Kingdom' && !profileState) setProfileState('England');
+                          if (val === 'Canada' && !profileState) setProfileState('Ontario');
+                        }}
+                        className="sm:col-span-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      >
+                        <option value="United States">United States (US)</option>
+                        <option value="India">India (IN)</option>
+                        <option value="United Kingdom">United Kingdom (GB)</option>
+                        <option value="Canada">Canada (CA)</option>
+                        <option value="Australia">Australia (AU)</option>
+                        <option value="Germany">Germany (DE)</option>
+                        <option value="France">France (FR)</option>
+                        <option value="Japan">Japan (JP)</option>
+                        <option value="Spain">Spain (ES)</option>
+                        <option value="Italy">Italy (IT)</option>
+                        <option value="Brazil">Brazil (BR)</option>
+                        <option value="Mexico">Mexico (MX)</option>
+                        <option value="Other">Other / Custom</option>
+                      </select>
+
+                      <input
+                        type="text"
+                        value={profileCountryCode}
+                        onChange={(e) => setProfileCountryCode(e.target.value.toUpperCase())}
+                        maxLength={3}
+                        placeholder="ISO (e.g. US)"
+                        className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-center uppercase font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* State / Province Field with Quick Suggestions */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        State / Province / Territory
+                      </label>
+                      <span className="text-[11px] text-slate-400">Required for accurate PIN disambiguation</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={profileState}
+                      onChange={(e) => setProfileState(e.target.value)}
+                      placeholder="e.g. California, Karnataka, Ontario, England, New York..."
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+
+                    {/* Common Suggestions */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-[11px] text-slate-400">Suggestions:</span>
+                      {(profileCountry === 'India'
+                        ? ['Karnataka', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Telangana', 'Gujarat', 'West Bengal']
+                        : profileCountry === 'United Kingdom'
+                        ? ['England', 'Scotland', 'Wales', 'Northern Ireland', 'Greater London']
+                        : profileCountry === 'Canada'
+                        ? ['Ontario', 'Quebec', 'British Columbia', 'Alberta']
+                        : ['California', 'New York', 'Texas', 'Florida', 'Washington', 'Illinois', 'Colorado']
+                      ).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setProfileState(st)}
+                          className={`px-2 py-0.5 rounded-md text-[11px] transition ${
+                            profileState.toLowerCase() === st.toLowerCase()
+                              ? 'bg-blue-600 text-white font-semibold'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                          }`}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* District / City Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        District / County (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={profileDistrict}
+                        onChange={(e) => setProfileDistrict(e.target.value)}
+                        placeholder="e.g. San Francisco County, Bengaluru Urban"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        City / Locality
+                      </label>
+                      <input
+                        type="text"
+                        value={profileCity}
+                        onChange={(e) => setProfileCity(e.target.value)}
+                        placeholder="e.g. San Francisco, Bengaluru, London"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Default ZIP / PIN Code */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Default ZIP or PIN Code
+                      </label>
+                      <span className="text-[11px] text-slate-400">Used as default precision seed</span>
+                    </div>
+                    <div className="relative">
+                      <Compass className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={profileZipPin}
+                        onChange={(e) => setProfileZipPin(e.target.value)}
+                        placeholder="e.g. 94103, 560001, 10001, SW1A 1AA..."
+                        className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggles */}
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                      <div>
+                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Auto-resolve Postal Codes in Main Search
+                        </div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Automatically query postal resolution when a 5-6 digit PIN or ZIP is entered in top search bar
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={profileAutoResolve}
+                        onChange={(e) => setProfileAutoResolve(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                      <div>
+                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          WTTR.in High Precision Mode
+                        </div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Fetch WTTR.in format=j1 meteorological matrices for instant verification
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={profileWttrMode}
+                        onChange={(e) => setProfileWttrMode(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={profileSaveStatus === 'saving'}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition"
+                    >
+                      {profileSaveStatus === 'saving' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : profileSaveStatus === 'saved' ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                      ) : (
+                        <Database className="h-4 w-4" />
+                      )}
+                      <span>
+                        {profileSaveStatus === 'saving'
+                          ? 'Saving to user-db.json...'
+                          : profileSaveStatus === 'saved'
+                          ? 'Saved to user-db.json!'
+                          : 'Save to user-db.json'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTestPrediction}
+                      disabled={profileTestStatus === 'testing' || !profileZipPin.trim()}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition"
+                    >
+                      {profileTestStatus === 'testing' ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Compass className="h-3.5 w-3.5 text-blue-500" />
+                      )}
+                      <span>Test WTTR.in Prediction</span>
+                    </button>
+                  </div>
+
+                  {/* Test Prediction Result Notice */}
+                  {testResultSummary && (
+                    <div
+                      className={`p-3 rounded-xl border text-xs animate-in fade-in duration-150 ${
+                        profileTestStatus === 'success'
+                          ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-900/60 dark:text-emerald-300'
+                          : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/30 dark:border-red-900/60 dark:text-red-300'
+                      }`}
+                    >
+                      <div className="font-semibold mb-0.5">
+                        {profileTestStatus === 'success' ? 'Prediction Test Succeeded' : 'Prediction Test Failed'}
+                      </div>
+                      <p className="font-mono text-[11px] leading-relaxed">{testResultSummary}</p>
+                    </div>
+                  )}
+
+                  {/* Saved PINs in user-db.json */}
+                  {savedPinsList.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Saved Postal Codes in user-db.json ({savedPinsList.length})
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {savedPinsList.map((p) => (
+                          <div
+                            key={p.code}
+                            className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-700/60 text-xs"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">
+                                {p.code}
+                              </span>
+                              <span className="truncate text-slate-700 dark:text-slate-200">
+                                {p.name}, {p.state || p.country}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSavedPin(p.code)}
+                              title="Delete from user-db.json"
+                              className="text-slate-400 hover:text-red-500 p-1 rounded"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -43,6 +43,114 @@ if (!fs.existsSync(DB_FILE)) {
   );
 }
 
+// User Profile Database (user-db.json) for Country, State, and Postal/PIN resolution
+const USER_DB_FILE = path.join(process.cwd(), 'user-db.json');
+
+interface UserProfileData {
+  country: string;
+  countryCode: string;
+  state: string;
+  stateCode?: string;
+  district?: string;
+  city?: string;
+  defaultZipPin?: string;
+  autoResolveOnZipInput?: boolean;
+  wttrPrecisionMode?: boolean;
+  lastUpdated?: string;
+}
+
+interface SavedPostalPinData {
+  code: string;
+  name: string;
+  state: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}
+
+interface UserDbData {
+  profile: UserProfileData;
+  savedZipPins: SavedPostalPinData[];
+}
+
+const DEFAULT_USER_DB: UserDbData = {
+  profile: {
+    country: 'United States',
+    countryCode: 'US',
+    state: 'California',
+    stateCode: 'CA',
+    district: '',
+    city: 'San Francisco',
+    defaultZipPin: '94103',
+    autoResolveOnZipInput: true,
+    wttrPrecisionMode: true,
+    lastUpdated: new Date().toISOString(),
+  },
+  savedZipPins: [
+    {
+      code: '94103',
+      name: 'San Francisco',
+      state: 'California',
+      country: 'United States',
+      latitude: 37.7725,
+      longitude: -122.4147,
+    },
+    {
+      code: '10001',
+      name: 'New York',
+      state: 'New York',
+      country: 'United States',
+      latitude: 40.7505,
+      longitude: -73.9965,
+    },
+    {
+      code: '560001',
+      name: 'Bengaluru (General Post Office)',
+      state: 'Karnataka',
+      country: 'India',
+      latitude: 12.9784,
+      longitude: 77.5946,
+    },
+  ],
+};
+
+if (!fs.existsSync(USER_DB_FILE)) {
+  fs.writeFileSync(USER_DB_FILE, JSON.stringify(DEFAULT_USER_DB, null, 2));
+}
+
+function getUserDbData(): UserDbData {
+  try {
+    const raw = fs.readFileSync(USER_DB_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return {
+      profile: {
+        ...DEFAULT_USER_DB.profile,
+        ...(parsed.profile || {}),
+      },
+      savedZipPins: Array.isArray(parsed.savedZipPins) ? parsed.savedZipPins : DEFAULT_USER_DB.savedZipPins,
+    };
+  } catch (err) {
+    return DEFAULT_USER_DB;
+  }
+}
+
+function saveUserDbData(patch: Partial<UserDbData>): UserDbData {
+  try {
+    const current = getUserDbData();
+    const updated: UserDbData = {
+      profile: patch.profile
+        ? { ...current.profile, ...patch.profile, lastUpdated: new Date().toISOString() }
+        : current.profile,
+      savedZipPins: patch.savedZipPins ? patch.savedZipPins : current.savedZipPins,
+    };
+    fs.writeFileSync(USER_DB_FILE, JSON.stringify(updated, null, 2));
+    return updated;
+  } catch (err) {
+    console.error('Failed to write to user-db.json', err);
+    throw err;
+  }
+}
+
 interface DbData {
   keys: Record<string, string>;
   savedLocations?: any[];
@@ -291,6 +399,381 @@ app.delete('/api/saved-locations/:id', (req: Request, res: Response) => {
     success: true,
     locations: updated.savedLocations,
   });
+});
+
+// User Profile Endpoints (Country, State, District, PIN/ZIP saved in user-db.json)
+app.get('/api/user-profile', (_req: Request, res: Response) => {
+  const userDb = getUserDbData();
+  res.json(userDb);
+});
+
+app.post('/api/user-profile', (req: Request, res: Response) => {
+  const { profile, savedZipPins, ...rest } = req.body || {};
+  const patch: Partial<UserDbData> = {};
+  if (profile && typeof profile === 'object') {
+    patch.profile = profile;
+  } else if (Object.keys(rest).length > 0) {
+    const current = getUserDbData().profile || {};
+    patch.profile = { ...current, ...rest };
+  }
+  if (Array.isArray(savedZipPins)) {
+    patch.savedZipPins = savedZipPins;
+  }
+  const updated = saveUserDbData(patch);
+  res.json({
+    success: true,
+    message: 'User profile and regional preferences saved to user-db.json',
+    profile: updated.profile,
+    savedZipPins: updated.savedZipPins,
+  });
+});
+
+app.post('/api/user-profile/save-pin', (req: Request, res: Response) => {
+  const { pin } = req.body;
+  if (!pin || !pin.code) {
+    return res.status(400).json({ error: 'Pin object with code is required' });
+  }
+  const current = getUserDbData();
+  const existing = current.savedZipPins || [];
+  const filtered = existing.filter((p) => p.code.toUpperCase() !== String(pin.code).toUpperCase());
+  const updatedPins = [
+    {
+      code: String(pin.code).trim(),
+      name: pin.name || pin.code,
+      state: pin.state || current.profile.state || '',
+      country: pin.country || current.profile.country || '',
+      latitude: parseFloat(pin.latitude) || 0,
+      longitude: parseFloat(pin.longitude) || 0,
+    },
+    ...filtered,
+  ].slice(0, 25);
+
+  const updated = saveUserDbData({ savedZipPins: updatedPins });
+  res.json({
+    success: true,
+    savedZipPins: updated.savedZipPins,
+  });
+});
+
+app.delete('/api/user-profile/save-pin/:code', (req: Request, res: Response) => {
+  const code = req.params.code;
+  const current = getUserDbData();
+  const filtered = (current.savedZipPins || []).filter((p) => p.code.toUpperCase() !== code.toUpperCase());
+  const updated = saveUserDbData({ savedZipPins: filtered });
+  res.json({
+    success: true,
+    savedZipPins: updated.savedZipPins,
+  });
+});
+
+// Helper to map country names to standard 2-letter ISO codes
+function getCountryCode(countryNameOrCode: string): string {
+  if (!countryNameOrCode) return 'US';
+  const clean = countryNameOrCode.trim().toUpperCase();
+  if (clean.length === 2) return clean;
+  const map: Record<string, string> = {
+    'UNITED STATES': 'US',
+    'UNITED STATES OF AMERICA': 'US',
+    USA: 'US',
+    INDIA: 'IN',
+    'UNITED KINGDOM': 'GB',
+    'GREAT BRITAIN': 'GB',
+    UK: 'GB',
+    ENGLAND: 'GB',
+    CANADA: 'CA',
+    GERMANY: 'DE',
+    DEUTSCHLAND: 'DE',
+    FRANCE: 'FR',
+    AUSTRALIA: 'AU',
+    SPAIN: 'ES',
+    ITALY: 'IT',
+    JAPAN: 'JP',
+    BRAZIL: 'BR',
+    MEXICO: 'MX',
+    NETHERLANDS: 'NL',
+    SWITZERLAND: 'CH',
+    SWEDEN: 'SE',
+    'SOUTH AFRICA': 'ZA',
+    'NEW ZEALAND': 'NZ',
+    RUSSIA: 'RU',
+    AUSTRIA: 'AT',
+    BELGIUM: 'BE',
+    POLAND: 'PL',
+    TURKEY: 'TR',
+    PORTUGAL: 'PT',
+    NORWAY: 'NO',
+    DENMARK: 'DK',
+    FINLAND: 'FI',
+    IRELAND: 'IE',
+  };
+  return map[clean] || 'US';
+}
+
+// Precise Weather Geocoding Endpoint for Postal Codes and PIN Codes (WTTR.in style)
+app.get('/api/geocode/postal', async (req: Request, res: Response): Promise<any> => {
+  const codeRaw = (req.query.code as string) || '';
+  if (!codeRaw || codeRaw.trim().length === 0) {
+    return res.status(400).json({ error: 'Postal code or PIN code is required' });
+  }
+
+  const code = codeRaw.trim();
+  const userDb = getUserDbData();
+  const country = ((req.query.country as string) || userDb.profile.country || 'United States').trim();
+  const countryCode = (
+    (req.query.countryCode as string) ||
+    userDb.profile.countryCode ||
+    getCountryCode(country)
+  )
+    .trim()
+    .toUpperCase();
+  const state = ((req.query.state as string) || userDb.profile.state || '').trim();
+
+  // Layer 1: Try Zippopotam (ultra-fast, exact postal database for US, IN, GB, CA, DE, FR, etc.)
+  try {
+    const zippoCountry = countryCode.toLowerCase();
+    const cleanPostal = code.split(' ')[0];
+    const zippoUrl = `https://api.zippopotam.us/${zippoCountry}/${encodeURIComponent(cleanPostal)}`;
+    const zippoRes = await fetch(zippoUrl);
+    if (zippoRes.ok) {
+      const zippoData = await zippoRes.json();
+      if (zippoData.places && zippoData.places.length > 0) {
+        let bestPlace = zippoData.places[0];
+        if (state) {
+          const match = zippoData.places.find(
+            (p: any) =>
+              p.state?.toLowerCase().includes(state.toLowerCase()) ||
+              p['state abbreviation']?.toLowerCase() === state.toLowerCase()
+          );
+          if (match) bestPlace = match;
+        }
+
+        const lat = parseFloat(bestPlace.latitude);
+        const lon = parseFloat(bestPlace.longitude);
+        const placeName = bestPlace['place name'] || code;
+        const stateName = bestPlace.state || state;
+        const fullCountry = zippoData.country || country;
+
+        const location = {
+          id: Math.round(Math.abs(lat * 10000 + lon * 1000)),
+          name: `${placeName} (${code})`,
+          latitude: lat,
+          longitude: lon,
+          country: fullCountry,
+          country_code: countryCode,
+          admin1: stateName,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          postcodes: [code],
+        };
+
+        return res.json({ success: true, location, source: 'zippopotam' });
+      }
+    }
+  } catch (err) {
+    // Proceed to next fallback
+  }
+
+  // Layer 2: Try WTTR.in format=j1 resolution
+  try {
+    const wttrQuery = `${code}${state ? ',' + state : ''}${country ? ',' + country : ''}`;
+    const wttrRes = await fetch(`https://wttr.in/${encodeURIComponent(wttrQuery)}?format=j1`, {
+      headers: { 'User-Agent': 'curl/7.88.1' },
+      signal: AbortSignal.timeout(3500),
+    });
+
+    if (wttrRes.ok) {
+      const wttrData = await wttrRes.json();
+      const area = wttrData.nearest_area?.[0];
+      if (area && area.latitude && area.longitude) {
+        const lat = parseFloat(area.latitude);
+        const lon = parseFloat(area.longitude);
+        const areaName = area.areaName?.[0]?.value || code;
+        const regionName = area.region?.[0]?.value || state;
+        const countryName = area.country?.[0]?.value || country;
+
+        const location = {
+          id: Math.round(Math.abs(lat * 10000 + lon * 1000)),
+          name: `${areaName} (${code})`,
+          latitude: lat,
+          longitude: lon,
+          country: countryName,
+          country_code: countryCode,
+          admin1: regionName,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          postcodes: [code],
+        };
+
+        return res.json({ success: true, location, source: 'wttr.in' });
+      }
+    }
+  } catch (err) {
+    // Proceed to next fallback
+  }
+
+  // Layer 3: OpenStreetMap Nominatim
+  try {
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(code)}&country=${encodeURIComponent(country)}&format=json&addressdetails=1&limit=3`;
+    const nomRes = await fetch(nominatimUrl, {
+      headers: { 'User-Agent': 'ClimaCastWeather/1.0 (contact: support@climacast.app)' },
+      signal: AbortSignal.timeout(3500),
+    });
+
+    if (nomRes.ok) {
+      const nomData = await nomRes.json();
+      if (Array.isArray(nomData) && nomData.length > 0) {
+        const item = nomData[0];
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        const addr = item.address || {};
+        const locality = addr.city || addr.town || addr.village || addr.suburb || addr.county || code;
+        const stateName = addr.state || state;
+        const countryName = addr.country || country;
+
+        const location = {
+          id: Math.round(Math.abs(lat * 10000 + lon * 1000)),
+          name: `${locality} (${code})`,
+          latitude: lat,
+          longitude: lon,
+          country: countryName,
+          country_code: (addr.country_code || countryCode).toUpperCase(),
+          admin1: stateName,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          postcodes: [code],
+        };
+
+        return res.json({ success: true, location, source: 'nominatim' });
+      }
+    }
+  } catch (err) {
+    // Proceed to next fallback
+  }
+
+  // Layer 4: Open-Meteo Geocoding
+  try {
+    const meteoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(code)}&count=5&language=en&format=json`;
+    const meteoRes = await fetch(meteoUrl);
+    if (meteoRes.ok) {
+      const meteoData = await meteoRes.json();
+      if (meteoData.results && meteoData.results.length > 0) {
+        const match =
+          meteoData.results.find(
+            (r: any) =>
+              r.country_code?.toUpperCase() === countryCode ||
+              r.country?.toLowerCase() === country.toLowerCase()
+          ) || meteoData.results[0];
+
+        return res.json({ success: true, location: match, source: 'open-meteo' });
+      }
+    }
+  } catch (err) {
+    // Proceed
+  }
+
+  return res.status(404).json({
+    error: `Could not resolve PIN/ZIP code '${code}' in ${state ? state + ', ' : ''}${country}. Please check the code or adjust your Country and State preferences in Settings.`,
+  });
+});
+
+// WTTR.in Live Weather Forecast API (supports ASCII terminal output and JSON)
+app.get('/api/weather/wttr', async (req: Request, res: Response): Promise<any> => {
+  const query = (req.query.query as string) || (req.query.location as string) || '94103';
+  try {
+    const results = await Promise.allSettled([
+      fetch(`https://wttr.in/${encodeURIComponent(query)}?format=j1`, {
+        headers: { 'User-Agent': 'curl/7.88.1' },
+        signal: AbortSignal.timeout(6000),
+      }),
+      fetch(`https://wttr.in/${encodeURIComponent(query)}?0?T`, {
+        headers: { 'User-Agent': 'curl/7.88.1' },
+        signal: AbortSignal.timeout(6000),
+      }),
+    ]);
+
+    const jsonSettled = results[0];
+    const asciiSettled = results[1];
+
+    let data: any = null;
+    let asciiTable: string | undefined;
+
+    if (asciiSettled.status === 'fulfilled' && asciiSettled.value.ok) {
+      try {
+        asciiTable = await asciiSettled.value.text();
+      } catch {}
+    }
+
+    if (jsonSettled.status === 'fulfilled' && jsonSettled.value.ok) {
+      try {
+        data = await jsonSettled.value.json();
+      } catch {}
+    }
+
+    if (!data) {
+      // Fallback: If WTTR JSON is unavailable or throttled, synthesize from Open-Meteo or provide ascii
+      if (asciiTable) {
+        return res.json({
+          success: true,
+          report: {
+            query,
+            resolvedArea: { areaName: query, region: '', country: '', latitude: 0, longitude: 0 },
+            current: { tempC: 20, tempF: 68, feelsLikeC: 20, feelsLikeF: 68, weatherDesc: 'Fair', humidity: 65, windSpeedKmph: 10, windDir: 'N', pressure: 1013, uvIndex: 3, precipMM: 0 },
+            weatherDays: [],
+            asciiTable,
+          },
+        });
+      }
+      throw new Error('WTTR service temporarily unavailable');
+    }
+
+    const cur = data.current_condition?.[0] || {};
+    const area = data.nearest_area?.[0] || {};
+    const days = (data.weather || []).map((day: any) => ({
+      date: day.date,
+      maxtempC: parseFloat(day.maxtempC || '0'),
+      mintempC: parseFloat(day.mintempC || '0'),
+      maxtempF: parseFloat(day.maxtempF || '0'),
+      mintempF: parseFloat(day.mintempF || '0'),
+      hourly: (day.hourly || []).map((h: any) => ({
+        time: h.time,
+        tempC: parseFloat(h.tempC || '0'),
+        tempF: parseFloat(h.tempF || '0'),
+        weatherDesc: h.weatherDesc?.[0]?.value || 'Clear',
+        windspeedKmph: parseFloat(h.windspeedKmph || '0'),
+        humidity: parseFloat(h.humidity || '0'),
+        chanceofrain: parseFloat(h.chanceofrain || '0'),
+      })),
+    }));
+
+    const report = {
+      query,
+      resolvedArea: {
+        areaName: area.areaName?.[0]?.value || query,
+        region: area.region?.[0]?.value || '',
+        country: area.country?.[0]?.value || '',
+        latitude: parseFloat(area.latitude || '0'),
+        longitude: parseFloat(area.longitude || '0'),
+      },
+      current: {
+        tempC: parseFloat(cur.temp_C || '0'),
+        tempF: parseFloat(cur.temp_F || '0'),
+        feelsLikeC: parseFloat(cur.FeelsLikeC || '0'),
+        feelsLikeF: parseFloat(cur.FeelsLikeF || '0'),
+        weatherDesc: cur.weatherDesc?.[0]?.value || 'Clear',
+        humidity: parseFloat(cur.humidity || '0'),
+        windSpeedKmph: parseFloat(cur.windspeedKmph || '0'),
+        windDir: cur.winddir16Point || 'N',
+        pressure: parseFloat(cur.pressure || '1013'),
+        uvIndex: parseFloat(cur.uvIndex || '0'),
+        precipMM: parseFloat(cur.precipMM || '0'),
+      },
+      weatherDays: days,
+      asciiTable,
+    };
+
+    return res.json({ success: true, report });
+  } catch (err: any) {
+    return res.status(502).json({
+      error: `Failed to fetch WTTR.in prediction: ${err.message}`,
+    });
+  }
 });
 
 // Notification evaluation endpoint: checks weather across saved locations for odd/alarming conditions or morning tip

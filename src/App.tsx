@@ -38,6 +38,8 @@ import { TipOfTheDayBanner } from './components/TipOfTheDayBanner';
 import { InteractiveWeatherMap } from './components/InteractiveWeatherMap';
 import { BackgroundSyncModal } from './components/BackgroundSyncModal';
 import { SettingsModal } from './components/SettingsModal';
+import { PostalWeatherModal } from './components/PostalWeatherModal';
+import { fetchUserProfile, resolvePostalLocation } from './services/userProfileApi';
 import { Earth3DModal } from './components/Earth3DModal';
 import { WeatherBackground } from './components/WeatherBackground';
 import { ExportReport } from './components/ExportReport';
@@ -159,6 +161,19 @@ export default function App() {
         }
       }
     });
+
+    // Check user-db.json for default ZIP / PIN code preference
+    fetchUserProfile().then((userDb) => {
+      if (!mounted) return;
+      if (userDb.profile.defaultZipPin && !localStorage.getItem('gw_last_location')) {
+        resolvePostalLocation(userDb.profile.defaultZipPin, userDb.profile.country).then((res) => {
+          if (mounted && res?.location) {
+            setCurrentLocation(res.location);
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
     return () => {
       mounted = false;
     };
@@ -204,6 +219,7 @@ export default function App() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showPostalModal, setShowPostalModal] = useState(false);
   const [showEarthModal, setShowEarthModal] = useState(false);
   const [isSimulatedAlertActive, setIsSimulatedAlertActive] = useState(false);
   
@@ -453,6 +469,7 @@ export default function App() {
           isOffline={isOffline}
           isSyncing={backgroundSync.isSyncing}
           onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenPostalModal={() => setShowPostalModal(true)}
           weather={weather || undefined}
           onOpenEarthModal={() => setShowEarthModal(true)}
           notificationSettings={notificationSettings}
@@ -673,8 +690,17 @@ export default function App() {
           onToggleTheme={(t) => setTheme(t)}
           platformView={platformView}
           onSelectPlatformView={(v) => setPlatformView(v)}
+          onSelectLocation={(loc) => setCurrentLocation(loc)}
         />
       )}
+
+      {/* WTTR.in Precision Postal & PIN Code Weather Modal */}
+      <PostalWeatherModal
+        isOpen={showPostalModal}
+        onClose={() => setShowPostalModal(false)}
+        onSelectLocation={(loc) => setCurrentLocation(loc)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+      />
 
       {/* Service Worker Background Sync Modal */}
       <BackgroundSyncModal

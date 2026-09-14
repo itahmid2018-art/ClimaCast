@@ -275,9 +275,14 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
 
           {activeTab === 'android' && (
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-900 dark:text-white">Android Native Compilation (Capacitor)</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-slate-900 dark:text-white">Android Native Compilation & GitHub Actions</h4>
+                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  CI/CD Automated
+                </span>
+              </div>
               <p className="text-slate-700 dark:text-slate-200 text-xs leading-relaxed font-normal">
-                Using Capacitor with <code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">capacitor.config.json</code>, compile the web bundle into a native Android Studio project and generate signed APKs or AABs for Google Play Store.
+                <strong>No Android Studio required:</strong> GitHub Actions automatically compiles the native Android APK (<code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">climacast-android-*.apk</code>) on every commit. Download it directly from your repository&apos;s GitHub Releases tab and tap to install!
               </p>
               <div className="relative rounded-2xl bg-slate-950 p-4 text-slate-100 font-mono text-xs border border-slate-800 shadow-inner">
                 <button
@@ -292,16 +297,17 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
                 >
                   {copiedCode === 'android-build' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
+                <div className="text-slate-400 font-medium"># Local Manual Build (Optional):</div>
                 <div className="text-slate-400 font-medium"># Install Capacitor dependencies</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npm install @capacitor/core @capacitor/cli @capacitor/android</div>
                 <div className="mt-2.5 text-slate-400 font-medium"># Build web assets and initialize Android</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npm run build</div>
-                <div className="text-emerald-400 font-semibold mt-0.5">npx cap add android</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npx cap sync android</div>
-                <div className="mt-2.5 text-slate-400 font-medium"># Open in Android Studio to build APK/AAB</div>
+                <div className="mt-2.5 text-slate-400 font-medium"># Open in Android Studio to generate signed APK/AAB</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npx cap open android</div>
               </div>
               <ul className="list-disc pl-4 text-xs text-slate-700 dark:text-slate-200 space-y-1.5 leading-relaxed font-normal">
+                <li>Automated by GitHub Actions workflow job <code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">build-android-apk</code> using Java 21 JDK and Android SDK.</li>
                 <li>Uses Android native Geolocation permissions (<code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">ACCESS_FINE_LOCATION</code>).</li>
                 <li>Native splash screen and status bar configured via <code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">capacitor.config.json</code>.</li>
                 <li>Integrates with native Android Clock Alarm via <code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">android.intent.action.SET_ALARM</code> to automatically wake users shortly before sunrise.</li>
@@ -311,16 +317,21 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
 
           {activeTab === 'ios' && (
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-900 dark:text-white">iOS Native Compilation (Capacitor & Xcode)</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-slate-900 dark:text-white">iOS Native Compilation & GitHub Actions</h4>
+                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  CI/CD Automated
+                </span>
+              </div>
               <p className="text-slate-700 dark:text-slate-200 text-xs leading-relaxed font-normal">
-                Compile into a native iOS project and run on iOS Simulator or deploy to Apple TestFlight and the App Store.
+                GitHub Actions builds both an <strong>iOS Simulator Bundle</strong> (<code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">climacast-ios-simulator-*.zip</code>) and a complete <strong>Pre-configured Xcode Workspace</strong> (<code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">climacast-ios-xcode-project-*.zip</code>) attached to GitHub Releases.
               </p>
               <div className="relative rounded-2xl bg-slate-950 p-4 text-slate-100 font-mono text-xs border border-slate-800 shadow-inner">
                 <button
                   type="button"
                   onClick={() =>
                     copyToClipboard(
-                      `npm install @capacitor/core @capacitor/cli @capacitor/ios\nnpm run build\nnpx cap add ios\nnpx cap sync ios\nnpx cap open ios`,
+                      `npm install @capacitor/core @capacitor/cli @capacitor/ios\nnpm run build\nnpx cap sync ios\nnpx cap open ios`,
                       'ios-build'
                     )
                   }
@@ -328,16 +339,16 @@ export const CrossPlatformGuideModal: React.FC<CrossPlatformGuideModalProps> = (
                 >
                   {copiedCode === 'ios-build' ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
+                <div className="text-slate-400 font-medium"># Local Manual Build (macOS + Xcode):</div>
                 <div className="text-slate-400 font-medium"># Install Capacitor iOS dependencies</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npm install @capacitor/core @capacitor/cli @capacitor/ios</div>
                 <div className="mt-2.5 text-slate-400 font-medium"># Sync web dist and launch Xcode</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npm run build</div>
-                <div className="text-emerald-400 font-semibold mt-0.5">npx cap add ios</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npx cap sync ios</div>
                 <div className="text-emerald-400 font-semibold mt-0.5">npx cap open ios</div>
               </div>
               <ul className="list-disc pl-4 text-xs text-slate-700 dark:text-slate-200 space-y-1.5 leading-relaxed font-normal">
-                <li>Requires macOS and Xcode 15+ installed.</li>
+                <li>Automated on Apple Silicon macOS runners in GitHub Actions workflow job <code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">build-ios-app</code>.</li>
                 <li>Includes safe area insets (<code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">viewport-fit=cover</code>) for notch and dynamic island.</li>
                 <li>Integrates with iOS System Calendar / Reminders (<code className="rounded bg-slate-100 dark:bg-slate-800 px-1 py-0.5 font-mono text-[11px] font-semibold text-slate-800 dark:text-slate-200">VALARM</code>) and Apple Shortcuts for automated pre-sunrise dawn alarms.</li>
               </ul>

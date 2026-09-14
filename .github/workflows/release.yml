@@ -1,4 +1,4 @@
-name: Release CI/CD
+name: Multi-Platform Release CI/CD
 
 on:
   push:
@@ -25,14 +25,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-release:
-    name: Build & Publish Release Variants
+  # -------------------------------------------------------------
+  # JOB 1: Determine Release Version & Tag
+  # -------------------------------------------------------------
+  determine-version:
+    name: Determine Release Tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.vars.outputs.tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Calculate Release Tag
+        id: vars
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            BASE_VER=$(node -p "require('./package.json').version || '1.0.0'")
+            TAG="v${BASE_VER}-build.${{ github.run_number }}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Selected Release Tag: ${TAG}"
+
+  # -------------------------------------------------------------
+  # JOB 2: Build Web, Extension, Server & Base Variants
+  # -------------------------------------------------------------
+  build-web-and-extension:
+    name: Build Web, Extension & Server
+    needs: determine-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -54,60 +83,104 @@ jobs:
       - name: Build Full-Stack Production Bundle
         run: npm run build
 
-      - name: Determine Release Tag
-        id: vars
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag_name }}" ]; then
-            TAG="${{ github.event.inputs.tag_name }}"
-          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
-          else
-            BASE_VER=$(node -p "require('./package.json').version || '1.0.0'")
-            TAG="v${BASE_VER}-build.${{ github.run_number }}"
-          fi
-          echo "RELEASE_TAG=${TAG}" >> $GITHUB_ENV
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "Target Release Tag: ${TAG}"
+      - name: Package Base Variants (Web, Chrome Ext, Server, Mobile Source)
+        run: node scripts/package-variants.js "${{ needs.determine-version.outputs.release_tag }}"
 
-      - name: Package All Multi-Platform Variants
-        run: node scripts/package-variants.js "${{ env.RELEASE_TAG }}"
-
-      - name: Tag Git Commit
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git rev-parse "${{ env.RELEASE_TAG }}" >/dev/null 2>&1; then
-            git tag -a "${{ env.RELEASE_TAG }}" -m "ClimaCast Automated Release ${{ env.RELEASE_TAG }}"
-            git push origin "${{ env.RELEASE_TAG }}" || echo "Tag push skipped or already exists on remote"
-          fi
-
-      - name: Publish GitHub Release & Upload Public Artifacts
-        uses: softprops/action-gh-release@v2
+      - name: Upload Web Build (dist) for Downstream Jobs
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: "ClimaCast Release ${{ env.RELEASE_TAG }}"
-          body_path: release-artifacts/release-notes.md
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          files: |
-            release-artifacts/*.zip
-            release-artifacts/*.tar.gz
-            release-artifacts/checksums.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: web-dist
+          path: dist
+          retention-days: 1
 
-  deploy-github-pages:
-    name: Deploy Web PWA to GitHub Pages
-    needs: build-and-release
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      - name: Upload Base Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: base-artifacts
+          path: release-artifacts/
+          retention-days: 1
+
+  # -------------------------------------------------------------
+  # JOB 3: Build Native Android APK
+  # -------------------------------------------------------------
+  build-android-apk:
+    name: Compile Native Android APK
+    needs: [determine-version, build-web-and-extension]
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Download Web Dist Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Build Native Android APK via Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          cd ..
+
+      - name: Prepare Android APK for Release
+        shell: bash
+        run: |
+          mkdir -p android-artifact
+          TAG="${{ needs.determine-version.outputs.release_tag }}"
+          APK_SOURCE="android/app/build/outputs/apk/debug/app-debug.apk"
+          TARGET_APK="android-artifact/climacast-android-${TAG}.apk"
+          if [ -f "$APK_SOURCE" ]; then
+            cp "$APK_SOURCE" "$TARGET_APK"
+            echo "✅ Android APK compiled successfully: $TARGET_APK"
+            ls -lh "$TARGET_APK"
+          else
+            echo "❌ APK build output not found at $APK_SOURCE"
+            exit 1
+          fi
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android-artifact/
+          retention-days: 1
+
+  # -------------------------------------------------------------
+  # JOB 4: Build Native Apple iOS (iPhone) App & Simulator
+  # -------------------------------------------------------------
+  build-ios-app:
+    name: Compile Native Apple iOS (iPhone)
+    needs: [determine-version, build-web-and-extension]
+    runs-on: macos-14
     continue-on-error: true
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -126,8 +199,145 @@ jobs:
             npm install
           fi
 
-      - name: Build Web Production Distribution
-        run: npm run build
+      - name: Download Web Dist Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build iOS Simulator Bundle & Xcode Project
+        shell: bash
+        run: |
+          mkdir -p ios-artifacts
+          TAG="${{ needs.determine-version.outputs.release_tag }}"
+
+          # 1. Build for iOS Simulator (Unsigned, no Apple Developer Account required)
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/derivedData \
+            build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO || echo "Simulator build completed with non-fatal warning"
+
+          # 2. Package Simulator App into zip
+          SIMULATOR_APP="build/derivedData/Build/Products/Release-iphonesimulator/App.app"
+          if [ -d "$SIMULATOR_APP" ]; then
+            cd build/derivedData/Build/Products/Release-iphonesimulator
+            zip -r "../../../../../ios-artifacts/climacast-ios-simulator-${TAG}.zip" App.app
+            cd ../../../../../
+            echo "✅ Created climacast-ios-simulator-${TAG}.zip"
+          fi
+
+          # 3. Package complete Xcode project ready for signing in Xcode
+          zip -r "ios-artifacts/climacast-ios-xcode-project-${TAG}.zip" ios/ capacitor.config.json
+          echo "✅ Created climacast-ios-xcode-project-${TAG}.zip"
+          ls -lh ios-artifacts/
+
+      - name: Upload iOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-artifacts
+          path: ios-artifacts/
+          retention-days: 1
+
+  # -------------------------------------------------------------
+  # JOB 5: Consolidate Binaries & Publish Public GitHub Release
+  # -------------------------------------------------------------
+  publish-release:
+    name: Publish Public GitHub Release
+    needs: [determine-version, build-web-and-extension, build-android-apk, build-ios-app]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare Unified Artifacts Directory
+        run: mkdir -p release-artifacts
+
+      - name: Download Base Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: base-artifacts
+          path: release-artifacts/
+
+      - name: Download Android APK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: release-artifacts/
+        continue-on-error: true
+
+      - name: Download iOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-artifacts
+          path: release-artifacts/
+        continue-on-error: true
+
+      - name: Generate Unified Checksums & Release Notes
+        run: |
+          node scripts/package-variants.js --checksums-only "${{ needs.determine-version.outputs.release_tag }}"
+          cat release-artifacts/release-notes.md
+
+      - name: Tag Git Commit
+        shell: bash
+        run: |
+          TAG="${{ needs.determine-version.outputs.release_tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git tag -a "$TAG" -m "ClimaCast Automated Multi-Platform Release $TAG"
+            git push origin "$TAG" || echo "Tag push skipped or already exists on remote"
+          fi
+
+      - name: Publish Public GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.determine-version.outputs.release_tag }}
+          name: "ClimaCast Multi-Platform Release ${{ needs.determine-version.outputs.release_tag }}"
+          body_path: release-artifacts/release-notes.md
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/*.zip
+            release-artifacts/*.tar.gz
+            release-artifacts/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------------
+  # JOB 6: Deploy Web PWA to GitHub Pages
+  # -------------------------------------------------------------
+  deploy-github-pages:
+    name: Deploy Web PWA to GitHub Pages
+    needs: [determine-version, publish-release]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Web Dist Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5

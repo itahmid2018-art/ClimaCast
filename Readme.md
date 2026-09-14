@@ -7,6 +7,7 @@ A reference-grade web application built to **ClimaCast design standards**, power
 ## ✨ Features
 
 - **Dynamic Weather Backgrounds:** Immersive, CSS-based gradient backgrounds that smoothly transition colors based on live weather conditions (Clear, Cloudy, Rain, Thunderstorm, Snow, Fog, etc.) wrapping the entire application.
+- **Precise Postal / PIN Code Weather (WTTR.in Engine & `user-db.json`):** Configure country, state, district, and default postal/PIN codes persisted securely in `user-db.json`. Look up micro-climate weather forecasts for any ZIP / PIN code across the world with multi-source fallback geocoding (Zippopotam, WTTR.in, Nominatim, Open-Meteo) and view both structured weather cards and raw terminal-style WTTR.in ASCII weather forecasts.
 - **Multi-Source Air Quality (AQI):** Switch between real-time AQI providers instantly. Includes Official AQI via , HyperLocal AQI via PurpleAir's real-time community sensor network, and the Default Open-Meteo model.
 - **ClimaCast Aesthetics:** Material 3 inspired layout with clean typography, generous spacing, dynamic atmospheric gradients matching real-time weather and daylight, and a **Sticky Navigation Header** that keeps essential controls and search persistently accessible while scrolling.
 - **Weather Insights (Powered by Gemini AI):** Natural language meteorological intelligence generating concise, conversational summaries, "What to Wear" dressing advice, outdoor activity guidance, health/comfort ratings, and a prominent **"Tip of the Day"** header banner using the server-side `@google/genai` SDK (`gemini-3.8-flash`).
@@ -65,6 +66,41 @@ The application will launch on `http://localhost:3000`.
 npm run build
 ```
 The compiled, production-ready static assets are written to `dist/`.
+
+---
+
+## 📍 Precise Postal / PIN Code Weather & Regional Profiles (WTTR.in Integration)
+
+ClimaCast features a dedicated regional profile system and postal code weather engine inspired by **[WTTR.in](https://wttr.in)**:
+
+### 1. Dual-Tier Persistence Architecture
+- **`db.json`**: Preserves application settings, saved favorite cities, notification rules, and custom API keys.
+- **`user-db.json`**: Specifically stores the user's demographic location profile:
+  - **Country**: Selected country name and ISO alpha-2 code (e.g., `US`, `IN`, `GB`, `CA`, `DE`, `FR`, `AU`, `JP`).
+  - **State / Province**: Regional administrative area (e.g., `California`, `Karnataka`, `Bavaria`).
+  - **District / County**: Sub-regional municipal or county identifier.
+  - **Default ZIP / PIN**: User's preferred primary postal code for automatic startup resolution.
+  - **Saved PIN Codes**: Collection of bookmarked PIN/ZIP codes with resolved coordinates and custom labels.
+
+### 2. Multi-Source Postal Geocoding Chain
+When a user enters a PIN or ZIP code (e.g., `94103`, `560001`, `SW1A 1AA`, `75001`), ClimaCast resolves geographic coordinates through an automated fallback cascade:
+1. **Zippopotam API (`api.zippopotam.us`)**: Micro-postal database with official postal boundaries.
+2. **WTTR.in Location Engine (`wttr.in/<postal>?format=j1`)**: Resolves postal queries through curl-compliant meteorological endpoints.
+3. **OpenStreetMap Nominatim (`nominatim.openstreetmap.org/search`)**: Structured address search bounded by the user's selected country.
+4. **Open-Meteo Geocoding (`geocoding-api.open-meteo.com`)**: General administrative search.
+
+### 3. WTTR.in Weather Engine & Terminal ASCII Predictions
+- **Curated Visual Cards**: 3-day morning, noon, evening, and night breakdown with temperature, precipitation probability, humidity, UV index, wind speed, and barometric pressure.
+- **Raw WTTR.in Terminal View**: Live ASCII weather report mimicking `curl wttr.in/<location>` with full ANSI art rendering, wind arrows, and meteorological tables.
+- **Direct Application Integration**: One-click **"Apply as Active Location"** button seamlessly updates the primary dashboard, hourly ribbon, 10-day forecast, and geospatial radar maps.
+
+### 4. REST API Endpoints
+- `GET /api/user-profile`: Retrieve the current user profile, country, state, district, and saved PIN codes.
+- `POST /api/user-profile`: Update country, state, district, or default ZIP/PIN code in `user-db.json`.
+- `POST /api/user-profile/pins`: Save a new bookmarked postal PIN code.
+- `DELETE /api/user-profile/pins/:id`: Remove a saved postal PIN code.
+- `GET /api/geocode/postal?code=<postal>&country=<code>`: Resolve postal code to latitude, longitude, and place name.
+- `GET /api/weather/wttr?location=<query>&format=<json|raw>`: Proxy weather request to WTTR.in with `curl/7.88.1` user agent headers.
 
 ---
 
@@ -199,27 +235,74 @@ Because the application is a client-side SPA with zero server dependencies:
 
 ---
 
-## 🚀 Automated GitHub Release CI/CD
+## 🚀 Automated Multi-Platform Release CI/CD (GitHub Actions)
 
-ClimaCast is equipped with an automated Continuous Integration and Continuous Deployment pipeline configured via **GitHub Actions** (`.github/workflows/release.yml`).
+ClimaCast features an enterprise-grade, parallel multi-job Continuous Integration & Continuous Delivery (CI/CD) pipeline implemented in **GitHub Actions** (`.github/workflows/release.yml`).
 
-Every push to the `main` or `master` branch (or semantic version tag `v*`) automatically builds, verifies, packages, and publishes a new public GitHub release with all variants ready for instant public download:
+Every push to `main` or semantic release tag (`v*`) automatically executes automated builds, cross-platform compilation, and packaging across **Android**, **Apple iOS**, **Google Chrome**, and **Web/Docker**:
 
-| Variant Artifact | Description | Target Use Case |
-| :--- | :--- | :--- |
-| **🌐 `climacast-web-pwa-*.zip`** | Static Web & PWA Bundle | Deploy directly to GitHub Pages, Netlify, Cloudflare Pages, or Vercel. Includes service worker and offline assets. |
-| **🧩 `climacast-chrome-extension-*.zip`** | Manifest V3 Chrome Extension | Extract and load unpacked into `chrome://extensions` or publish directly to the Chrome Web Store. |
-| **🖥️ `climacast-fullstack-server-*.tar.gz` / `.zip`** | Standalone Node.js & Docker Server | Production server bundle (`dist/server.cjs`) with `Dockerfile`, ready for Cloud Run, AWS, or VPS. |
-| **📱 `climacast-capacitor-mobile-*.zip`** | Capacitor Mobile Source Package | Native Android & iOS source project ready for Android Studio (`npx cap open android`) and Xcode. |
-| **🔒 `checksums.txt`** | SHA-256 Checksums | Cryptographic hashes for all published artifacts. |
-
-### Local Packaging
-Developers can assemble and test all variants locally at any time:
-```bash
-# Compile and build all 4 release packages
-npm run package:all
 ```
-For full details, see [`docs/ci-cd-release-guide.md`](docs/ci-cd-release-guide.md).
+                              ┌────────────────────────────────────────┐
+                              │ Git Push to main / Tag Push (e.g. v1.1)│
+                              └───────────────────┬────────────────────┘
+                                                  │
+                                      [determine-version]
+                                                  │
+               ┌──────────────────────────────────┼──────────────────────────────────┐
+               │                                  │                                  │
+               ▼                                  ▼                                  ▼
+   ┌───────────────────────┐          ┌───────────────────────┐          ┌───────────────────────┐
+   │build-web-and-extension│          │   build-android-apk   │          │     build-ios-app     │
+   │    (ubuntu-latest)    │          │    (ubuntu-latest)    │          │      (macos-14)       │
+   ├───────────────────────┤          ├───────────────────────┤          ├───────────────────────┤
+   │• TypeScript Linting   │          │• Java 21 JDK          │          │• Node 20 & Xcode      │
+   │• Vite & Server Build  │          │• Android SDK Tools    │          │• npx cap sync ios     │
+   │• Web PWA Package      │          │• npx cap sync android │          │• xcodebuild           │
+   │• Chrome Extension Zip │          │• ./gradlew            │          │• iOS Simulator Bundle │
+   │• Full-Stack Docker Tar│          │  assembleDebug        │          │• Ready Xcode Project  │
+   └───────────┬───────────┘          └───────────┬───────────┘          └───────────┬───────────┘
+               │                                  │                                  │
+               └──────────────────────────────────┼──────────────────────────────────┘
+                                                  │
+                                                  ▼
+                                      ┌───────────────────────┐
+                                      │    publish-release    │
+                                      │    (ubuntu-latest)    │
+                                      ├───────────────────────┤
+                                      │• Gather all binaries  │
+                                      │• SHA-256 Checksums    │
+                                      │• Tag Git Release      │
+                                      │• Attach Assets to GH  │
+                                      └───────────────────────┘
+```
+
+### 📦 Published Release Binaries & Artifacts
+
+| Platform / Binary | Downloadable Artifact | Direct End-User Experience |
+| :--- | :--- | :--- |
+| **🤖 Android Phone** | `climacast-android-*.apk` | **Direct Mobile Installer**: Download on any Android phone, tap to install ("Install Unknown Apps"), and run with full hardware acceleration. |
+| **🧩 Google Chrome** | `climacast-chrome-extension-*.zip` | **Chrome Extension**: Extract and load unpacked into `chrome://extensions/` (Developer mode) or submit directly to the Chrome Web Store. |
+| **🍎 Apple iOS (Simulator)** | `climacast-ios-simulator-*.zip` | **iOS Simulator Package**: Drag and drop `App.app` directly into Xcode Simulator for testing without Apple Developer certificates. |
+| **📱 Apple iOS (Xcode Project)** | `climacast-ios-xcode-project-*.zip` | **Pre-configured Xcode Workspace**: Open in Xcode on macOS, connect a physical iPhone via USB or Wi-Fi, and click **Run**. |
+| **🌐 Web App & PWA** | `climacast-web-pwa-*.zip` | **Static Web & PWA**: Deploy to Netlify, Vercel, Firebase Hosting, Cloudflare Pages, or static Nginx servers. |
+| **🖥️ Full-Stack Server** | `climacast-fullstack-server-*.tar.gz` / `.zip` | **Standalone Server & Docker**: Pre-compiled Node.js server (`dist/server.cjs`), static assets, `package.json`, and `Dockerfile`. |
+| **📲 Capacitor Source** | `climacast-capacitor-mobile-*.zip` | Complete multi-platform mobile project scaffold with Capacitor configuration. |
+| **🔒 SHA-256 Checksums** | `checksums.txt` | Cryptographic hashes for all published files to verify file integrity. |
+
+### Local Packaging & Build Verification
+Developers can assemble and verify all distribution variants locally at any time:
+```bash
+# 1. Compile production frontend & backend server
+npm run build
+
+# 2. Package all platform variants with SHA-256 integrity hashes
+npm run package:all -- v1.0.0
+
+# 3. View generated archives in /release-artifacts
+ls -lh release-artifacts/
+```
+
+For complete documentation on the automated CI/CD pipeline, see [`docs/ci-cd-release-guide.md`](docs/ci-cd-release-guide.md) and the comprehensive deployment manual in [`docs/UserGuide.md`](docs/UserGuide.md).
 
 ---
 

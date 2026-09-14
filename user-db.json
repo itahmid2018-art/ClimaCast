@@ -1,0 +1,40 @@
+{
+  "profile": {
+    "country": "India",
+    "countryCode": "IN",
+    "state": "Karnataka",
+    "stateCode": "KA",
+    "district": "Bengaluru Urban",
+    "city": "Bengaluru",
+    "defaultZipPin": "560001",
+    "autoResolveOnZipInput": true,
+    "wttrPrecisionMode": true,
+    "lastUpdated": "2026-09-14T16:53:59.140Z"
+  },
+  "savedZipPins": [
+    {
+      "code": "94103",
+      "name": "San Francisco",
+      "state": "California",
+      "country": "United States",
+      "latitude": 37.7725,
+      "longitude": -122.4147
+    },
+    {
+      "code": "10001",
+      "name": "New York",
+      "state": "New York",
+      "country": "United States",
+      "latitude": 40.7505,
+      "longitude": -73.9965
+    },
+    {
+      "code": "560001",
+      "name": "Bengaluru (General Post Office)",
+      "state": "Karnataka",
+      "country": "India",
+      "latitude": 12.9784,
+      "longitude": 77.5946
+    }
+  ]
+}

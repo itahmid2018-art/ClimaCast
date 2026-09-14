@@ -198,4 +198,72 @@ export type WeatherWidgetId =
   | 'moon-phase'
   | 'precipitation';
 
+export interface UserProfile {
+  country: string;
+  countryCode: string;
+  state: string;
+  stateCode?: string;
+  district?: string;
+  city?: string;
+  defaultZipPin?: string;
+  autoResolveOnZipInput?: boolean;
+  wttrPrecisionMode?: boolean;
+  lastUpdated?: string;
+}
+
+export interface SavedPostalPin {
+  code: string;
+  name: string;
+  state: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface UserDbState {
+  profile: UserProfile;
+  savedZipPins: SavedPostalPin[];
+}
+
+export interface WttrWeatherReport {
+  query: string;
+  resolvedArea: {
+    areaName: string;
+    region: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  };
+  current: {
+    tempC: number;
+    tempF: number;
+    feelsLikeC: number;
+    feelsLikeF: number;
+    weatherDesc: string;
+    humidity: number;
+    windSpeedKmph: number;
+    windDir: string;
+    pressure: number;
+    uvIndex: number;
+    precipMM: number;
+  };
+  weatherDays: Array<{
+    date: string;
+    maxtempC: number;
+    mintempC: number;
+    maxtempF: number;
+    mintempF: number;
+    hourly: Array<{
+      time: string;
+      tempC: number;
+      tempF: number;
+      weatherDesc: string;
+      windspeedKmph: number;
+      humidity: number;
+      chanceofrain: number;
+    }>;
+  }>;
+  asciiTable?: string;
+}
+
 

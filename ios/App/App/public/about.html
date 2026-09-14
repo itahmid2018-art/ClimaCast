@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>About ClimaCast - Modern Weather Intelligence</title>
+  <meta name="description" content="ClimaCast: Know your weather before it knows you. Get hyper‑local, minute‑by‑minute forecasts powered by AI, with clear alerts and smart recommendations for every part of your day." />
+  <link rel="icon" type="image/svg+xml" href="/weather-icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --primary-border: #bfdbfe;
+      --accent: #0284c7;
+      --badge-bg: #e0f2fe;
+      --badge-text: #0369a1;
+      --code-bg: #f1f5f9;
+      --code-text: #0f172a;
+      --pre-bg: #0f172a;
+      --pre-text: #f8fafc;
+      --divider: #e2e8f0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #090d16;
+        --card-bg: #111827;
+        --card-border: #1f2937;
+        --text-main: #f9fafb;
+        --text-muted: #9ca3af;
+        --primary: #3b82f6;
+        --primary-light: #172554;
+        --primary-border: #1e3a8a;
+        --accent: #38bdf8;
+        --badge-bg: #0c4a6e;
+        --badge-text: #7dd3fc;
+        --code-bg: #1e293b;
+        --code-text: #e2e8f0;
+        --pre-bg: #030712;
+        --pre-text: #f3f4f6;
+        --divider: #1f2937;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.65;
+      padding-bottom: 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header Nav */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background-color: rgba(248, 250, 252, 0.85);
+      border-bottom: 1px solid var(--divider);
+      transition: background-color 0.2s;
+    }
+    @media (prefers-color-scheme: dark) {
+      header {
+        background-color: rgba(9, 13, 22, 0.85);
+      }
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+    }
+
+    .brand-text {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background-color: var(--primary);
+      color: #ffffff;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+    .back-btn:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 48px 0 32px;
+      text-align: center;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background-color: var(--badge-bg);
+      color: var(--badge-text);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Main Attribution Callout */
+    .attribution-card {
+      margin: 32px 0 44px;
+      background: linear-gradient(135deg, var(--primary-light), var(--card-bg));
+      border: 2px solid var(--primary-border);
+      border-radius: 20px;
+      padding: 28px 32px;
+      position: relative;
+      box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.08);
+    }
+
+    .attribution-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .attribution-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: var(--primary);
+      color: #ffffff;
+      border-radius: 12px;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .attribution-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.3;
+    }
+
+    .attribution-title a {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .attribution-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* Cards & Grid */
+    .section-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 40px 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    .feature-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 22px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .feature-card-icon {
+      font-size: 1.6rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Tech Specs & Tables */
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      font-size: 0.9rem;
+    }
+
+    .specs-table th, .specs-table td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .specs-table th {
+      background-color: var(--code-bg);
+      font-weight: 700;
+      color: var(--text-main);
+      width: 35%;
+    }
+
+    .specs-table tr:last-child td, .specs-table tr:last-child th {
+      border-bottom: none;
+    }
+
+    /* Code Blocks */
+    pre {
+      background-color: var(--pre-bg);
+      color: var(--pre-text);
+      padding: 18px 22px;
+      border-radius: 14px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85em;
+      background-color: var(--code-bg);
+      color: var(--code-text);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--divider);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .hero h1 {
+        font-size: 1.85rem;
+      }
+      .attribution-card {
+        padding: 20px;
+      }
+      .attribution-title {
+        font-size: 1.15rem;
+      }
+    }
+
+    /* App Description Section Styles */
+    .app-desc-container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 36px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    .app-desc-lead {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .app-desc-sublead {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 24px;
+    }
+
+    .why-climacast-card {
+      background-color: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px 26px;
+      margin-bottom: 24px;
+    }
+
+    .why-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin-bottom: 16px;
+      color: var(--text-main);
+    }
+
+    .why-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .why-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 0.92rem;
+      line-height: 1.55;
+      color: var(--text-main);
+    }
+
+    .why-bullet {
+      font-size: 1.25rem;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    .why-item strong {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    .app-desc-closing {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 28px;
+    }
+
+    .download-banner {
+      background: linear-gradient(135deg, var(--card-bg), var(--primary-light));
+      border: 1.5px solid var(--primary-border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      text-align: center;
+    }
+
+    .download-heading {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .download-subheading {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    .store-buttons-grid {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .store-badge-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background-color: #0f172a;
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 10px 18px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      min-width: 175px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .store-badge-btn {
+        background-color: #1e293b;
+        border-color: #334155;
+      }
+    }
+
+    .store-badge-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .pwa-accent-btn {
+      background-color: #1d4ed8;
+      border-color: #3b82f6;
+    }
+    .pwa-accent-btn:hover {
+      background-color: #1e40af;
+    }
+
+    .store-badge-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .store-badge-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .store-badge-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.8;
+      line-height: 1.1;
+      font-weight: 600;
+    }
+
+    .store-badge-store {
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <header>
+    <div class="container">
+      <div class="nav-inner">
+        <a href="/" class="brand" title="ClimaCast Weather">
+          <img src="/weather-icon.svg" alt="ClimaCast Logo" class="brand-icon" />
+          <span class="brand-text">ClimaCast</span>
+        </a>
+        <a href="/" class="back-btn" id="return-to-app-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Return to Weather
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero Banner -->
+    <div class="hero">
+      <div class="pill-badge">Weather Intelligence</div>
+      <h1>About ClimaCast</h1>
+      <p style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 10px; letter-spacing: -0.01em;">
+        ClimaCast: Know your weather before it knows you.
+      </p>
+      <p style="font-size: 1.05rem; color: var(--text-muted); max-width: 680px; margin: 0 auto; line-height: 1.6;">
+        Get hyper‑local, minute‑by‑minute forecasts powered by AI, with clear alerts and smart recommendations for every part of your day &mdash; from commute to workouts to weekend plans.
+      </p>
+    </div>
+
+    <!-- Meteorological Attribution Callout -->
+    <div class="attribution-card" id="open-meteo-attribution">
+      <div class="attribution-header">
+        <div class="attribution-icon">🌤️</div>
+        <div>
+          <h2 class="attribution-title">
+            Weather data provided with high precision by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
+          </h2>
+        </div>
+      </div>
+      <p class="attribution-desc">
+        ClimaCast relies on Open-Meteo's open-source meteorological APIs for high-resolution numerical weather predictions (NWP), seamless global geocoding, solar radiation arcs, and comprehensive air quality forecasts (CAMS & GFS). All atmospheric datasets are rendered with zero commercial lock-in under the Attribution 4.0 International license (CC BY 4.0).
+      </p>
+    </div>
+
+    <!-- App Description Section -->
+    <section id="app-description" class="app-desc-container">
+      <h2 class="section-title" style="margin-top: 0; margin-bottom: 16px;">📱 App Description</h2>
+      
+      <p class="app-desc-lead">
+        Plan your day with confidence, not guesswork, ClimaCast turns complex meteorological data into simple, actionable insights so you always know what to wear, when to leave, and how to stay safe.
+      </p>
+      
+      <p class="app-desc-sublead">
+        Built on reference‑grade data and modern design, ClimaCast delivers ultra‑fast, accurate forecasts across web and mobile—so you spend less time refreshing and more time living.
+      </p>
+
+      <div class="why-climacast-card">
+        <h3 class="why-title">Why ClimaCast?</h3>
+        <div class="why-list">
+          <div class="why-item">
+            <span class="why-bullet">🎯</span>
+            <div>
+              <strong>Hyper‑local forecasts:</strong> Street‑level accuracy for temperature, rain, wind, and air quality.
+            </div>
+          </div>
+          <div class="why-item">
+            <span class="why-bullet">🧠</span>
+            <div>
+              <strong>AI‑powered intelligence:</strong> Personalized tips for your routine—running, commuting, travel, outdoor events.
+            </div>
+          </div>
+          <div class="why-item">
+            <span class="why-bullet">🚨</span>
+            <div>
+              <strong>Real‑time alerts:</strong> Severe weather, sudden downpours, heatwaves, and pollution spikes, pushed instantly to your devices.
+            </div>
+          </div>
+          <div class="why-item">
+            <span class="why-bullet">✨</span>
+            <div>
+              <strong>Beautiful, fast experience:</strong> Clean ClimaCast design system with smooth animations and offline support.
+            </div>
+          </div>
+          <div class="why-item">
+            <span class="why-bullet">🌅</span>
+            <div>
+              <strong>Smart daily briefings:</strong> Morning and evening summaries that tell you exactly what matters for your schedule.
+            </div>
+          </div>
+          <div class="why-item">
+            <span class="why-bullet">🔄</span>
+            <div>
+              <strong>Multi‑device sync:</strong> Seamless experience across web, iOS, and Android with one account.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="app-desc-closing">
+        Whether you’re a daily commuter, fitness enthusiast, traveller, or just someone who hates getting caught in the rain, ClimaCast gives you the clarity to plan ahead and the confidence to step outside.
+      </p>
+
+      <!-- Download Badges -->
+      <div class="download-banner">
+        <div class="download-heading">Download ClimaCast and make every day a good weather day.</div>
+        <p class="download-subheading">Available across official mobile app stores, desktop web, and browser extensions.</p>
+        
+        <div class="store-buttons-grid">
+          <!-- Apple App Store -->
+          <a href="#download" class="store-badge-btn" onclick="showStoreToast('Apple App Store (iOS)'); return false;" title="Download on the App Store">
+            <svg class="store-badge-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.93-2.85-.9.04-2 .6-2.65 1.36-.58.67-1.08 1.74-.95 2.77.99.08 2.04-.52 2.67-1.28z"/>
+            </svg>
+            <div class="store-badge-text">
+              <span class="store-badge-label">Download on the</span>
+              <span class="store-badge-store">App Store</span>
+            </div>
+          </a>
+
+          <!-- Google Play Store -->
+          <a href="#download" class="store-badge-btn" onclick="showStoreToast('Google Play Store (Android)'); return false;" title="Get it on Google Play">
+            <svg class="store-badge-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.609 1.814L13.792 12 3.61 22.186c-.372-.363-.61-.876-.61-1.46V3.274c0-.584.238-1.097.609-1.46zm11.24 11.24l2.583 2.583-11.884 6.863 9.301-9.446zm2.583-2.583L14.85 7.888 5.549 2.443l11.883 6.863v.165zm1.196 1.055c.372.215.61.613.61 1.046s-.238.831-.61 1.046l-2.023 1.168-2.64-2.64 2.64-2.64 2.023 1.168z"/>
+            </svg>
+            <div class="store-badge-text">
+              <span class="store-badge-label">GET IT ON</span>
+              <span class="store-badge-store">Google Play</span>
+            </div>
+          </a>
+
+          <!-- Progressive Web App / Add to Home -->
+          <a href="/" class="store-badge-btn pwa-accent-btn" title="Add to Home Screen (PWA)">
+            <svg class="store-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <div class="store-badge-text">
+              <span class="store-badge-label">INSTALL PWA</span>
+              <span class="store-badge-store">Add to Home</span>
+            </div>
+          </a>
+
+          <!-- Chrome Web Store -->
+          <a href="#download" class="store-badge-btn" onclick="showStoreToast('Google Chrome Extension'); return false;" title="Add to Google Chrome">
+            <svg class="store-badge-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-.55.06-1.09.18-1.61l5.44 9.42c.75.13 1.55.19 2.38.19zm0-5c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm6.66-2.52c.22-.78.34-1.61.34-2.48 0-3.61-2.41-6.66-5.74-7.65l4.5 7.79c.57.73.9 1.63.9 2.34zm-9.33-8.87C10.12 3.23 11.04 3 12 3c2.72 0 5.12 1.25 6.68 3.21L13.8 14.5c-.53-.87-1.46-1.5-2.55-1.5-.47 0-.91.11-1.31.31L9.33 3.61z"/>
+            </svg>
+            <div class="store-badge-text">
+              <span class="store-badge-label">AVAILABLE FOR</span>
+              <span class="store-badge-store">Chrome Browser</span>
+            </div>
+          </a>
+        </div>
+        <div id="store-toast" style="display: none; margin-top: 16px; font-size: 0.85rem; padding: 12px 18px; background-color: var(--card-bg); color: var(--text-main); border: 1.5px solid var(--primary); border-radius: 12px; max-width: 520px; margin-left: auto; margin-right: auto; box-shadow: 0 4px 14px rgba(37,99,235,0.12); line-height: 1.5;"></div>
+      </div>
+    </section>
+
+    <!-- Key Features Section -->
+    <h2 class="section-title">✨ Key Platform Features</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-card-icon">🎨</span>
+        <h3>Dynamic Weather Atmospheres</h3>
+        <p>Immersive, CSS-based atmospheric gradients that smoothly transition based on real-time weather codes (Clear, Rain, Storms, Fog, Snow) and solar day/night cycles.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🤖</span>
+        <h3>Gemini AI Weather Insights</h3>
+        <p>Conversational natural-language summaries, "What to Wear" dressing advice, outdoor activity scoring, and a prominent "Tip of the Day" powered by Google's Gemini Flash SDK.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🍃</span>
+        <h3>Multi-Source Air Quality (AQI)</h3>
+        <p>Toggle between real-time AQI providers: Default Open-Meteo model and HyperLocal AQI via PurpleAir's real-time community optical sensor network.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">⚡</span>
+        <h3>Severe Storm Warnings & Alerts</h3>
+        <p>Evaluates Open-Meteo convective models for severe thunderstorms, damaging gusts, hail risk, flash flooding, and air quality advisories with safety protocols.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🗺️</span>
+        <h3>Interactive Radar & Cloud Map</h3>
+        <p>Geospatial Doppler radar and infrared satellite cloud cover layers with a timeline loop player, opacity sliders, and theme-adaptive base maps.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🌓</span>
+        <h3>Astronomical Moon & Dawn Pulse</h3>
+        <p>Live synodic lunar calculation displaying moon phase, illumination percentage, and dynamic golden dawn aura with silent Web Notifications before sunrise.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">⏰</span>
+        <h3>Native Alarm Synchronization</h3>
+        <p>Deep integration with Android Clock alarms, iOS Calendar/Reminders alarms (.ics with VALARM), and background Service Worker alerts.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">📦</span>
+        <h3>Offline Cache & Background Sync</h3>
+        <p>Automatic client-side caching of weather data in CacheStorage via the Web Background Sync API, ensuring instant offline access with reconnect synchronization.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">📌</span>
+        <h3>Sticky Jitter-Free Header</h3>
+        <p>Collapses smoothly into a persistent single-row header retaining the logo and search bar on scroll with dual-threshold hysteresis and GPU acceleration.</p>
+      </div>
+    </div>
+
+    <!-- Tech Stack Table -->
+    <h2 class="section-title">🛠️ Technical Architecture & Stack</h2>
+    <table class="specs-table">
+      <tbody>
+        <tr>
+          <th>Frontend Framework</th>
+          <td>React 19 + TypeScript (Strict Type Checking)</td>
+        </tr>
+        <tr>
+          <th>Build Tool & Dev Server</th>
+          <td>Vite 6 with Hot Module Replacement & Express backend</td>
+        </tr>
+        <tr>
+          <th>Styling & UI Tokens</th>
+          <td>Tailwind CSS v4 + Plus Jakarta Sans Typography</td>
+        </tr>
+        <tr>
+          <th>Iconography & Motion</th>
+          <td>Lucide React Icons + Motion (Framer Motion)</td>
+        </tr>
+        <tr>
+          <th>Primary Data Source</th>
+          <td><strong>Open-Meteo</strong> (Forecast, Geocoding, Solar & Air Quality APIs)</td>
+        </tr>
+        <tr>
+          <th>Artificial Intelligence</th>
+          <td>Google Gemini 3.8 Flash via server-side <code>@google/genai</code> SDK</td>
+        </tr>
+        <tr>
+          <th>Cross-Platform Mobile</th>
+          <td>Capacitor 6 (Android & iOS Native Wrappers)</td>
+        </tr>
+        <tr>
+          <th>Browser Extension</th>
+          <td>Google Chrome Extension Manifest V3 (Unpacked & Web Store Ready)</td>
+        </tr>
+        <tr>
+          <th>Offline Persistence</th>
+          <td>PWA Service Worker + Web CacheStorage + LocalStorage</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Cross-Platform Readiness -->
+    <h2 class="section-title">📲 Cross-Platform Deployment</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-card-icon">📱</span>
+        <h3>Progressive Web App (PWA)</h3>
+        <p>Installable directly to home screens on iOS Safari and Android Chrome via standard <code>manifest.json</code> and standalone display mode.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🤖</span>
+        <h3>Native Android (Capacitor)</h3>
+        <p>Configured with <code>capacitor.config.json</code> to compile into release APKs and Google Play App Bundles via Android Studio.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🍏</span>
+        <h3>Native iOS (Capacitor)</h3>
+        <p>Generates native Xcode project targets for iPhone and iPad simulators and App Store testflight deployment.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-card-icon">🧩</span>
+        <h3>Google Chrome Add-on</h3>
+        <p>Packed with Manifest V3 specification in <code>public/chrome-extension/manifest.json</code> for 1-click toolbar popup weather forecasting.</p>
+      </div>
+    </div>
+
+    <!-- Attribution & Licenses -->
+    <h2 class="section-title">⚖️ Attribution & Licensing</h2>
+    <div class="feature-card" style="margin-bottom: 24px;">
+      <p style="margin-bottom: 12px;">
+        <strong>Weather Data:</strong> Meteorological models, global city geocoding, and atmospheric forecasts are provided with high precision by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 700;">Open-Meteo</a> under the Creative Commons Attribution 4.0 International License (CC BY 4.0).
+      </p>
+      <p style="margin-bottom: 12px;">
+        <strong>Open-Meteo Source:</strong> <a href="https://github.com/open-meteo/open-meteo" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 600;">github.com/open-meteo/open-meteo</a>
+      </p>
+      <p>
+        <strong>Radar & Satellite Imagery:</strong> Precipitation tiles and global radar frames courtesy of the RainViewer and OpenWeatherMap APIs.
+      </p>
+    </div>
+
+    <!-- Return to App Button Callout -->
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="/" class="back-btn" style="padding: 12px 28px; font-size: 1rem;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Return to Live Forecast
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <div>ClimaCast &copy; 2026 &bull; Reference Weather Application</div>
+      <div>Weather data provided with high precision by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></div>
+    </footer>
+  </main>
+
+  <script>
+    function showStoreToast(platform) {
+      const toast = document.getElementById('store-toast');
+      if (!toast) return;
+      toast.style.display = 'block';
+      toast.innerHTML = `<strong>${platform}:</strong> Pre-built binary packages and project files are available in the <a href="/" style="color: var(--primary); font-weight: 700; text-decoration: underline;">Developers</a> guide, or install immediately right now as a <strong>Progressive Web App (PWA)</strong>!`;
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 7000);
+    }
+  </script>
+</body>
+</html>

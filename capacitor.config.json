@@ -1,6 +1,6 @@
 {
-  "appId": "com.googleweather.openmeteo",
-  "appName": "Google Weather",
+  "appId": "com.climacast.weather",
+  "appName": "ClimaCast",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {

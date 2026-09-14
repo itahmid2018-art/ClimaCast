@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { GeoLocation, TemperatureUnit, ThemeMode, ProcessedWeather, SavedLocationNotificationSettings } from '../types';
 import { searchLocations } from '../services/weatherApi';
+import { resolvePostalLocation } from '../services/userProfileApi';
 import { calculateMoonPhase } from '../utils/astronomy';
 import { MoonPhaseIcon } from './MoonPhaseIcon';
 import { ExportReport } from './ExportReport';
@@ -54,6 +55,7 @@ interface WeatherHeaderProps {
   notificationSettings?: SavedLocationNotificationSettings;
   onUpdateNotificationSettings?: (settings: SavedLocationNotificationSettings) => void;
   onNotificationDispatched?: (title: string, body: string, type: 'alarming_weather' | 'morning_tip') => void;
+  onOpenPostalModal?: () => void;
 }
 
 export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
@@ -85,9 +87,11 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   },
   onUpdateNotificationSettings,
   onNotificationDispatched,
+  onOpenPostalModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
+  const [postalResult, setPostalResult] = useState<{ location: GeoLocation; source: string } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showFavoritesModal, setShowFavoritesModal] = useState(false);
@@ -112,10 +116,9 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
         window.requestAnimationFrame(() => {
           const offset = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
           // Hysteresis buffer:
-          // To collapse: Must scroll down past 80px
-          // To expand: Must scroll back up near top (< 25px)
-          // Between 25px and 80px: Retain previous state to completely prevent jitter and oscillation
-          const shouldCollapse = isScrolledRef.current ? offset > 25 : offset > 80;
+          // To collapse: Must scroll down past 40px
+          // To expand: Must scroll back up near top (< 15px)
+          const shouldCollapse = isScrolledRef.current ? offset > 15 : offset > 40;
           
           if (shouldCollapse !== isScrolledRef.current) {
             isScrolledRef.current = shouldCollapse;
@@ -135,20 +138,36 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
     };
   }, []);
 
-  // Search debounce
+  // Search debounce with Postal PIN / ZIP resolution
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       setSearchResults([]);
+      setPostalResult(null);
       setIsSearching(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
-      const results = await searchLocations(searchQuery);
-      setSearchResults(results);
-      setIsSearching(false);
-      setIsDropdownOpen(true);
+      const trimmed = searchQuery.trim();
+      const isLikelyPostal = /^[0-9A-Za-z\s-]{3,10}$/.test(trimmed) && /\d/.test(trimmed);
+
+      try {
+        const [normalResults, postalGeo] = await Promise.all([
+          searchLocations(trimmed),
+          isLikelyPostal
+            ? resolvePostalLocation(trimmed).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+
+        setSearchResults(normalResults);
+        setPostalResult(postalGeo);
+      } catch (err) {
+        console.warn('Search error', err);
+      } finally {
+        setIsSearching(false);
+        setIsDropdownOpen(true);
+      }
     }, 300);
 
     return () => clearTimeout(timer);
@@ -229,10 +248,42 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
           {isSearching ? (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-              Searching global locations...
+              Searching global locations & postal codes...
             </div>
-          ) : searchResults.length > 0 ? (
-            <div className="max-h-72 overflow-y-auto py-1">
+          ) : (postalResult || searchResults.length > 0) ? (
+            <div className="max-h-80 overflow-y-auto py-1">
+              {/* High-Precision WTTR / Postal PIN Result */}
+              {postalResult && (
+                <button
+                  type="button"
+                  onClick={() => handlePickLocation(postalResult.location)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left text-sm bg-blue-50/80 hover:bg-blue-100/90 dark:bg-blue-950/50 dark:hover:bg-blue-900/70 border-b border-blue-100 dark:border-blue-900/50 transition group"
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <div className="p-1.5 bg-blue-600 text-white rounded-lg shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                      <Compass className="h-4 w-4" />
+                    </div>
+                    <div className="truncate">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {postalResult.location.name}
+                        </span>
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded">
+                          Postal / WTTR
+                        </span>
+                      </div>
+                      <span className="text-xs text-blue-700 dark:text-blue-300">
+                        {[postalResult.location.admin1, postalResult.location.country].filter(Boolean).join(', ')} • Precise {postalResult.source} match
+                      </span>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                    {postalResult.location.latitude.toFixed(2)}°, {postalResult.location.longitude.toFixed(2)}°
+                  </span>
+                </button>
+              )}
+
+              {/* Standard Locations List */}
               {searchResults.map((item) => (
                 <button
                   key={item.id}
@@ -268,18 +319,16 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   );
 
   return (
-    <header
-      className={`sticky top-0 z-50 w-full px-4 md:px-6 transition-all duration-200 ease-out backdrop-blur-xl transform-gpu ${
-        isScrolled
-          ? 'py-2.5 bg-white/95 dark:bg-slate-950/95 border-b border-slate-200/80 dark:border-slate-800/80 shadow-md'
-          : 'pt-4 pb-2 bg-slate-50/80 dark:bg-slate-950/80 border-b border-transparent shadow-xs'
-      }`}
-    >
-      {isScrolled ? (
-        /* Scrolled state: strictly keep only the logo and next to it the search bar. Rest hides as normal. */
-        <div className="mx-auto flex max-w-6xl items-center gap-3 md:gap-4 w-full transition-opacity duration-200">
-          {/* Logo */}
+    <div className="w-full">
+      {/* Sticky Top Navigation Header - Always transparent matching the page, zero rectangular background */}
+      <header
+        id="top-nav-header"
+        className="sticky top-0 z-50 w-full px-4 md:px-6 py-2.5 bg-transparent border-transparent shadow-none transition-all duration-200"
+      >
+        <div className="mx-auto flex max-w-6xl items-center gap-3 md:gap-4 w-full">
+          {/* Logo on the left */}
           <button
+            id="header-logo-btn"
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2.5 shrink-0 text-left group transition hover:opacity-90 cursor-pointer"
@@ -293,36 +342,256 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
             </span>
           </button>
 
-          {/* Search Bar next to Logo */}
+          {/* Search Bar - ALWAYS directly next to Logo, never jumps or remounts */}
           <div className="flex-1 min-w-0">
             {renderSearchBar(true)}
           </div>
-        </div>
-      ) : (
-        /* Unscrolled Normal State */
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 transition-opacity duration-200">
-          {/* Top Control Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Logo / Title + Astronomical Moon Phase */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-500/30">
-                <Sun className="h-5 w-5 animate-spin-slow text-amber-300" />
+
+          {/* Action Controls - Visible in full view, smoothly collapses on scroll so strictly Logo and Search Bar stay pinned */}
+          <div
+            id="header-action-controls"
+            className={`flex items-center gap-1.5 md:gap-2 shrink-0 transition-all duration-300 ease-in-out ${
+              isScrolled
+                ? 'opacity-0 max-w-0 pointer-events-none overflow-hidden scale-95'
+                : 'opacity-100 max-w-3xl scale-100'
+            }`}
+          >
+            {/* View Mode Selector (Web, Mobile App, Chrome Extension Popup) */}
+            <div className="hidden lg:flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+              <button
+                id="view-web-btn"
+                type="button"
+                onClick={() => onSelectPlatformView('web')}
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+                  platformView === 'web'
+                    ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
+                    : 'hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Full Web App layout"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>Web</span>
+              </button>
+              <button
+                id="view-mobile-btn"
+                type="button"
+                onClick={() => onSelectPlatformView('mobile')}
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+                  platformView === 'mobile'
+                    ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
+                    : 'hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Mobile Screen (Capacitor Android / iOS layout)"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+                <span>Mobile</span>
+              </button>
+              <button
+                id="view-extension-btn"
+                type="button"
+                onClick={() => onSelectPlatformView('extension')}
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+                  platformView === 'extension'
+                    ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
+                    : 'hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Chrome Addon popup view (380px compact)"
+              >
+                <Layers className="h-3.5 w-3.5" />
+                <span>Extension</span>
+              </button>
+            </div>
+            
+            {/* Export Report */}
+            {weather && (
+              <div className="hidden xl:block">
+                <ExportReport weather={weather} unit={unit} />
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold tracking-tight text-slate-900 dark:text-white text-base md:text-lg">
-                    ClimaCast
-                  </span>
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                    Open-Meteo
+            )}
+
+            {/* 3D Earth & Google Street View / Maps Exploration */}
+            {onOpenEarthModal && (
+              <button
+                id="earth-3d-header-btn"
+                type="button"
+                onClick={onOpenEarthModal}
+                className="hidden sm:flex h-9 items-center gap-1.5 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-sky-50/90 px-2.5 text-xs font-semibold text-blue-900 shadow-xs backdrop-blur-xs transition-all hover:scale-[1.02] hover:border-blue-400 hover:shadow-sm active:scale-[0.98] dark:border-blue-800/80 dark:bg-gradient-to-r dark:from-blue-950/60 dark:via-indigo-950/60 dark:to-sky-950/60 dark:text-blue-200"
+                title="Explore 3D Earth & Google Street View"
+              >
+                <div className="relative flex items-center justify-center">
+                  <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin-slow" />
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  PWA • Android/iOS • Chrome Add-on
+                <span className="hidden md:inline font-bold">3D Earth</span>
+                {weather && (
+                  <span className="flex items-center gap-1 rounded-md bg-white/80 dark:bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
+                    <span>{weatherEmoji}</span>
+                    <span>{weather.current.temperature}°</span>
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Favorite toggle */}
+            <button
+              id="favorite-btn"
+              type="button"
+              onClick={() => onToggleFavorite(currentLocation)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-amber-500 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              title={isFav ? 'Remove from saved locations' : 'Save location'}
+            >
+              {isFav ? (
+                <BookmarkCheck className="h-4 w-4 text-amber-500" />
+              ) : (
+                <Bookmark className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Saved list drawer button */}
+            <button
+              id="saved-locations-btn"
+              type="button"
+              onClick={() => setShowFavoritesModal(true)}
+              className="relative flex h-9 items-center gap-1.5 rounded-xl bg-white/80 px-2.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700"
+              title="View saved locations"
+            >
+              <MapPin className="h-3.5 w-3.5 text-blue-500" />
+              <span className="hidden md:inline">Saved</span>
+              {favorites.length > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
+                  {favorites.length}
                 </span>
-              </div>
+              )}
+            </button>
+
+            {/* Refresh button */}
+            <button
+              id="refresh-weather-btn"
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Refresh weather data"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
+            </button>
+
+            {/* WTTR.in Postal Weather Predictor button */}
+            {onOpenPostalModal && (
+              <button
+                id="postal-weather-btn"
+                type="button"
+                onClick={onOpenPostalModal}
+                className="hidden sm:flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 px-2.5 text-xs font-semibold text-blue-700 shadow-xs transition hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/60 dark:to-indigo-950/40 dark:text-blue-300 dark:hover:from-blue-900/80 dark:hover:to-indigo-900/60 border border-blue-200/60 dark:border-blue-800/60"
+                title="WTTR.in Postal Prediction: Lookup weather by PIN / ZIP code with regional user-db.json"
+              >
+                <Compass className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="hidden md:inline font-bold">ZIP / PIN</span>
+              </button>
+            )}
+
+            {/* Settings button */}
+            <button
+              id="settings-btn"
+              type="button"
+              onClick={onOpenSettings}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Settings & Preferences"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+
+            {/* Background Sync & Offline Status */}
+            {onOpenSyncModal && (
+              <button
+                id="background-sync-header-btn"
+                type="button"
+                onClick={onOpenSyncModal}
+                className={`hidden xl:flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold shadow-xs transition ${
+                  isOffline
+                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300'
+                    : isSyncing
+                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300'
+                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
+                title="Service Worker Background Sync: Automatically updates cached forecast when network reconnects"
+              >
+                <CloudCheck
+                  className={`h-4 w-4 ${
+                    isSyncing
+                      ? 'animate-pulse text-blue-500'
+                      : isOffline
+                      ? 'text-amber-500'
+                      : 'text-emerald-500'
+                  }`}
+                />
+                <span className="text-[11px]">
+                  {isSyncing ? 'Syncing...' : isOffline ? 'Cached' : 'Auto-Sync'}
+                </span>
+              </button>
+            )}
+
+            {/* Unit Toggle (°C / °F) */}
+            <div className="flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-bold text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+              <button
+                id="unit-celsius-btn"
+                type="button"
+                onClick={() => onToggleUnit('celsius')}
+                className={`rounded-lg px-2.5 py-1 transition-all ${
+                  unit === 'celsius'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                °C
+              </button>
+              <button
+                id="unit-fahrenheit-btn"
+                type="button"
+                onClick={() => onToggleUnit('fahrenheit')}
+                className={`rounded-lg px-2.5 py-1 transition-all ${
+                  unit === 'fahrenheit'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                °F
+              </button>
             </div>
+
+            {/* Light / Dark Mode Toggle */}
+            <button
+              id="theme-toggle-btn"
+              type="button"
+              onClick={() => onToggleTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-amber-400 dark:hover:bg-slate-700"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Sub-bar: Moon Phase & Quick Navigation Menu (scrolls off naturally with page, or fades when scrolled) */}
+      <div
+        id="header-sub-menu"
+        className={`px-4 md:px-6 pb-2 transition-all duration-300 ${
+          isScrolled ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none' : 'opacity-100 max-h-24'
+        }`}
+      >
+        <div className="mx-auto flex max-w-6xl items-center justify-between flex-wrap gap-2 pt-1">
+          {/* Left: Moon Phase & Provider badge */}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-blue-100/80 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+              Open-Meteo
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+              PWA • Multi-Platform
+            </span>
 
             {/* Astronomical Moon Phase Chip & Interactive Details */}
             <div ref={moonPopoverRef} className="relative">
@@ -402,226 +671,16 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Controls: Platform Preview Mode, Favorites, Units, Refresh, Theme */}
-          <div className="flex items-center gap-2">
-            {/* View Mode Selector (Web, Mobile App, Chrome Extension Popup) */}
-            <div className="hidden sm:flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
-              <button
-                id="view-web-btn"
-                type="button"
-                onClick={() => onSelectPlatformView('web')}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
-                  platformView === 'web'
-                    ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
-                    : 'hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Full Web App layout"
-              >
-                <Globe className="h-3.5 w-3.5" />
-                <span>Web</span>
-              </button>
-              <button
-                id="view-mobile-btn"
-                type="button"
-                onClick={() => onSelectPlatformView('mobile')}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
-                  platformView === 'mobile'
-                    ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
-                    : 'hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Mobile Screen (Capacitor Android / iOS layout)"
-              >
-                <Smartphone className="h-3.5 w-3.5" />
-                <span>Mobile</span>
-              </button>
-              <button
-                id="view-extension-btn"
-                type="button"
-                onClick={() => onSelectPlatformView('extension')}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
-                  platformView === 'extension'
-                    ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
-                    : 'hover:text-slate-900 dark:hover:text-white'
-                }`}
-                title="Chrome Addon popup view (380px compact)"
-              >
-                <Layers className="h-3.5 w-3.5" />
-                <span>Extension</span>
-              </button>
-            </div>
-            
-            {/* Export Report */}
-            {weather && (
-              <div className="hidden sm:block">
-                <ExportReport weather={weather} unit={unit} />
-              </div>
-            )}
-
-            {/* 3D Earth & Google Street View / Maps Exploration */}
-            {onOpenEarthModal && (
-              <button
-                id="earth-3d-header-btn"
-                type="button"
-                onClick={onOpenEarthModal}
-                className="flex h-9 items-center gap-1.5 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-sky-50/90 px-2.5 text-xs font-semibold text-blue-900 shadow-xs backdrop-blur-xs transition-all hover:scale-[1.02] hover:border-blue-400 hover:shadow-sm active:scale-[0.98] dark:border-blue-800/80 dark:bg-gradient-to-r dark:from-blue-950/60 dark:via-indigo-950/60 dark:to-sky-950/60 dark:text-blue-200"
-                title="Explore 3D Earth & Google Street View"
-              >
-                <div className="relative flex items-center justify-center">
-                  <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin-slow" />
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                </div>
-                <span className="hidden sm:inline font-bold">3D Earth</span>
-                {weather && (
-                  <span className="flex items-center gap-1 rounded-md bg-white/80 dark:bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-                    <span>{weatherEmoji}</span>
-                    <span>{weather.current.temperature}°</span>
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Favorite toggle */}
-            <button
-              id="favorite-btn"
-              type="button"
-              onClick={() => onToggleFavorite(currentLocation)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-amber-500 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
-              title={isFav ? 'Remove from saved locations' : 'Save location'}
-            >
-              {isFav ? (
-                <BookmarkCheck className="h-4 w-4 text-amber-500" />
-              ) : (
-                <Bookmark className="h-4 w-4" />
-              )}
-            </button>
-
-            {/* Saved list drawer button */}
-            <button
-              id="saved-locations-btn"
-              type="button"
-              onClick={() => setShowFavoritesModal(true)}
-              className="relative flex h-9 items-center gap-1.5 rounded-xl bg-white/80 px-2.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700"
-              title="View saved locations"
-            >
-              <MapPin className="h-3.5 w-3.5 text-blue-500" />
-              <span className="hidden md:inline">Saved</span>
-              {favorites.length > 0 && (
-                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-bold text-white">
-                  {favorites.length}
-                </span>
-              )}
-            </button>
-
-            {/* Refresh button */}
-            <button
-              id="refresh-weather-btn"
-              type="button"
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
-              title="Refresh weather data"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
-            </button>
-
-            {/* Settings button */}
-            <button
-              id="settings-btn"
-              type="button"
-              onClick={onOpenSettings}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
-              title="Settings & Preferences"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-
-            {/* Background Sync & Offline Status */}
-            {onOpenSyncModal && (
-              <button
-                id="background-sync-header-btn"
-                type="button"
-                onClick={onOpenSyncModal}
-                className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold shadow-xs transition ${
-                  isOffline
-                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300'
-                    : isSyncing
-                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300'
-                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700'
-                }`}
-                title="Service Worker Background Sync: Automatically updates cached forecast when network reconnects"
-              >
-                <CloudCheck
-                  className={`h-4 w-4 ${
-                    isSyncing
-                      ? 'animate-pulse text-blue-500'
-                      : isOffline
-                      ? 'text-amber-500'
-                      : 'text-emerald-500'
-                  }`}
-                />
-                <span className="hidden xl:inline text-[11px]">
-                  {isSyncing ? 'Syncing...' : isOffline ? 'Cached' : 'Auto-Sync'}
-                </span>
-              </button>
-            )}
-
-            {/* Unit Toggle (°C / °F) */}
-            <div className="flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-bold text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
-              <button
-                id="unit-celsius-btn"
-                type="button"
-                onClick={() => onToggleUnit('celsius')}
-                className={`rounded-lg px-2.5 py-1 transition-all ${
-                  unit === 'celsius'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                °C
-              </button>
-              <button
-                id="unit-fahrenheit-btn"
-                type="button"
-                onClick={() => onToggleUnit('fahrenheit')}
-                className={`rounded-lg px-2.5 py-1 transition-all ${
-                  unit === 'fahrenheit'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                °F
-              </button>
-            </div>
-
-            {/* Light / Dark Mode Toggle */}
-            <button
-              id="theme-toggle-btn"
-              type="button"
-              onClick={() => onToggleTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-amber-400 dark:hover:bg-slate-700"
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
+          {/* Right: Quick Navigation Menu */}
+          <div className="flex items-center justify-center flex-wrap gap-1.5">
+            <button onClick={() => document.getElementById('current-weather-hero')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Current</button>
+            <button onClick={() => document.getElementById('hourly-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Hourly</button>
+            <button onClick={() => document.getElementById('daily-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">10-Day</button>
+            <button onClick={() => document.getElementById('weather-details-grid')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">AQI & Details</button>
+            <button onClick={() => document.getElementById('weather-map-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Radar Map</button>
           </div>
         </div>
-
-        {/* Google Style Search Bar */}
-        {renderSearchBar(false)}
-
-        {/* Quick Navigation Menu */}
-        <div className="flex justify-center flex-wrap gap-2 mt-1">
-          <button onClick={() => document.getElementById('current-weather-hero')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Current</button>
-          <button onClick={() => document.getElementById('hourly-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Hourly</button>
-          <button onClick={() => document.getElementById('daily-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">10-Day</button>
-          <button onClick={() => document.getElementById('weather-details-grid')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">AQI & Details</button>
-          <button onClick={() => document.getElementById('weather-map-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Radar Map</button>
-        </div>
       </div>
-    )}
 
       {/* Saved Locations & Smart Notifications Modal */}
       <SavedLocationsModal
@@ -637,6 +696,6 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
         onUpdateNotificationSettings={onUpdateNotificationSettings || (() => {})}
         onNotificationDispatched={onNotificationDispatched}
       />
-    </header>
+    </div>
   );
 };
