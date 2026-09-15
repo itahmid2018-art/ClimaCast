@@ -31,5 +31,26 @@
     "enabled": true,
     "morningTipEnabled": true,
     "severeAlertsOnly": true
+  },
+  "machineId": "climacast-dev-srv-asia-southeast1",
+  "uniqueUserId": "usr_itahmid_8197845321",
+  "authorizedUser": {
+    "name": "Tahmid",
+    "email": "itahmid2018@gmail.com",
+    "phone": "+918197845321",
+    "rawPhone": "8197845321",
+    "status": "authorized"
+  },
+  "twilioIntegration": {
+    "configured": true,
+    "accountSidMasked": "ACfa2a...3707",
+    "fromPhone": "8197845321",
+    "authorizedRecipient": "+918197845321",
+    "lastTestedAt": "2026-09-14T17:53:53.966Z",
+    "testStatus": "trial_template_restricted",
+    "testErrorCode": 572006,
+    "testErrorMessage": "Invalid template name. Trial accounts can only use predefined SMS templates.",
+    "helloMessage": "Hello Tahmid! Welcome to ClimaCast Weather. Automated meteorological service verification test.",
+    "note": "Twilio trial accounts enforce predefined SMS template restrictions on custom message bodies until upgraded."
   }
 }

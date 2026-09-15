@@ -20,6 +20,7 @@ import {
   RefreshCw,
   CloudCheck,
   Settings,
+  Newspaper,
 } from 'lucide-react';
 import { GeoLocation, TemperatureUnit, ThemeMode, ProcessedWeather, SavedLocationNotificationSettings } from '../types';
 import { searchLocations } from '../services/weatherApi';
@@ -56,6 +57,7 @@ interface WeatherHeaderProps {
   onUpdateNotificationSettings?: (settings: SavedLocationNotificationSettings) => void;
   onNotificationDispatched?: (title: string, body: string, type: 'alarming_weather' | 'morning_tip') => void;
   onOpenPostalModal?: () => void;
+  onOpenNewsShareModal?: () => void;
 }
 
 export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
@@ -88,6 +90,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
   onUpdateNotificationSettings,
   onNotificationDispatched,
   onOpenPostalModal,
+  onOpenNewsShareModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GeoLocation[]>([]);
@@ -320,54 +323,54 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
 
   return (
     <div className="w-full">
-      {/* Sticky Top Navigation Header - Always transparent matching the page, zero rectangular background */}
+      {/* Sticky Top Navigation Header - Frosted glass backdrop prevents card bleedthrough, Logo and Search permanently visible */}
       <header
         id="top-nav-header"
-        className="sticky top-0 z-50 w-full px-4 md:px-6 py-2.5 bg-transparent border-transparent shadow-none transition-all duration-200"
+        className={`sticky top-0 z-50 w-full px-3 md:px-6 py-2.5 transition-all duration-200 ${
+          isScrolled
+            ? 'backdrop-blur-xl bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800/80 shadow-sm'
+            : 'backdrop-blur-md bg-white/75 dark:bg-slate-900/75 border-b border-slate-200/40 dark:border-slate-800/40 shadow-xs'
+        }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center gap-3 md:gap-4 w-full">
-          {/* Logo on the left */}
+        <div className="mx-auto flex max-w-6xl items-center gap-2.5 md:gap-4 w-full">
+          {/* Logo on the left - Permanently visible and prioritized */}
           <button
             id="header-logo-btn"
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-2.5 shrink-0 text-left group transition hover:opacity-90 cursor-pointer"
+            className="flex items-center gap-2 shrink-0 text-left group transition hover:opacity-90 cursor-pointer"
             title="ClimaCast - Scroll to top"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-500/30 group-hover:scale-105 transition-transform">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-500/30 group-hover:scale-105 transition-transform shrink-0">
               <Sun className="h-5 w-5 animate-spin-slow text-amber-300" />
             </div>
-            <span className="font-semibold tracking-tight text-slate-900 dark:text-white text-base md:text-lg whitespace-nowrap">
+            <span className="font-bold tracking-tight text-slate-900 dark:text-white text-base md:text-lg whitespace-nowrap hidden min-[380px]:inline">
               ClimaCast
             </span>
           </button>
 
-          {/* Search Bar - ALWAYS directly next to Logo, never jumps or remounts */}
-          <div className="flex-1 min-w-0">
+          {/* Search Bar - Permanently visible, stable width, zero layout shifts */}
+          <div className="flex-1 min-w-[140px] max-w-2xl">
             {renderSearchBar(true)}
           </div>
 
-          {/* Action Controls - Visible in full view, smoothly collapses on scroll so strictly Logo and Search Bar stay pinned */}
+          {/* Action Controls - Stable layout, no max-w-0 layout thrashing */}
           <div
             id="header-action-controls"
-            className={`flex items-center gap-1.5 md:gap-2 shrink-0 transition-all duration-300 ease-in-out ${
-              isScrolled
-                ? 'opacity-0 max-w-0 pointer-events-none overflow-hidden scale-95'
-                : 'opacity-100 max-w-3xl scale-100'
-            }`}
+            className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0"
           >
-            {/* View Mode Selector (Web, Mobile App, Chrome Extension Popup) */}
-            <div className="hidden lg:flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+            {/* View Mode Selector (Web, Mobile App, Chrome Extension) - Visible on larger screens */}
+            <div className="hidden xl:flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
               <button
                 id="view-web-btn"
                 type="button"
                 onClick={() => onSelectPlatformView('web')}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+                className={`flex items-center gap-1 rounded-lg px-2 py-1 transition-all ${
                   platformView === 'web'
                     ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
                     : 'hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Full Web App layout"
+                title="Full Web App layout (SQLite enabled)"
               >
                 <Globe className="h-3.5 w-3.5" />
                 <span>Web</span>
@@ -376,12 +379,12 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 id="view-mobile-btn"
                 type="button"
                 onClick={() => onSelectPlatformView('mobile')}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+                className={`flex items-center gap-1 rounded-lg px-2 py-1 transition-all ${
                   platformView === 'mobile'
                     ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
                     : 'hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Mobile Screen (Capacitor Android / iOS layout)"
+                title="Mobile Screen (Capacitor Android / iOS layout - client storage)"
               >
                 <Smartphone className="h-3.5 w-3.5" />
                 <span>Mobile</span>
@@ -390,23 +393,30 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 id="view-extension-btn"
                 type="button"
                 onClick={() => onSelectPlatformView('extension')}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 transition-all ${
+                className={`flex items-center gap-1 rounded-lg px-2 py-1 transition-all ${
                   platformView === 'extension'
                     ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-700 dark:text-white'
                     : 'hover:text-slate-900 dark:hover:text-white'
                 }`}
-                title="Chrome Addon popup view (380px compact)"
+                title="Chrome Extension popup view"
               >
                 <Layers className="h-3.5 w-3.5" />
                 <span>Extension</span>
               </button>
             </div>
-            
-            {/* Export Report */}
-            {weather && (
-              <div className="hidden xl:block">
-                <ExportReport weather={weather} unit={unit} />
-              </div>
+
+            {/* Share Weather as News Report */}
+            {weather && onOpenNewsShareModal && (
+              <button
+                id="header-share-news-btn"
+                type="button"
+                onClick={onOpenNewsShareModal}
+                className="hidden sm:flex h-9 items-center gap-1.5 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 px-2.5 text-xs font-semibold text-blue-900 shadow-xs backdrop-blur-xs transition-all hover:scale-[1.02] hover:border-blue-400 hover:shadow-sm active:scale-[0.98] dark:border-blue-800/80 dark:bg-gradient-to-r dark:from-blue-950/60 dark:to-indigo-950/60 dark:text-blue-200"
+                title="Share Weather as News Report (WhatsApp, Twilio SMS, Email, etc.)"
+              >
+                <Newspaper className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="hidden lg:inline font-bold">Share News</span>
+              </button>
             )}
 
             {/* 3D Earth & Google Street View / Maps Exploration */}
@@ -415,23 +425,11 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 id="earth-3d-header-btn"
                 type="button"
                 onClick={onOpenEarthModal}
-                className="hidden sm:flex h-9 items-center gap-1.5 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-sky-50/90 px-2.5 text-xs font-semibold text-blue-900 shadow-xs backdrop-blur-xs transition-all hover:scale-[1.02] hover:border-blue-400 hover:shadow-sm active:scale-[0.98] dark:border-blue-800/80 dark:bg-gradient-to-r dark:from-blue-950/60 dark:via-indigo-950/60 dark:to-sky-950/60 dark:text-blue-200"
+                className="hidden lg:flex h-9 items-center gap-1.5 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-sky-50/90 px-2 text-xs font-semibold text-blue-900 shadow-xs backdrop-blur-xs transition hover:border-blue-400 dark:border-blue-800/80 dark:bg-gradient-to-r dark:from-blue-950/60 dark:via-indigo-950/60 dark:to-sky-950/60 dark:text-blue-200"
                 title="Explore 3D Earth & Google Street View"
               >
-                <div className="relative flex items-center justify-center">
-                  <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin-slow" />
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                </div>
-                <span className="hidden md:inline font-bold">3D Earth</span>
-                {weather && (
-                  <span className="flex items-center gap-1 rounded-md bg-white/80 dark:bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300">
-                    <span>{weatherEmoji}</span>
-                    <span>{weather.current.temperature}°</span>
-                  </span>
-                )}
+                <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="hidden xl:inline font-bold">3D Earth</span>
               </button>
             )}
 
@@ -440,7 +438,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
               id="favorite-btn"
               type="button"
               onClick={() => onToggleFavorite(currentLocation)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-amber-500 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-amber-500 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
               title={isFav ? 'Remove from saved locations' : 'Save location'}
             >
               {isFav ? (
@@ -473,66 +471,11 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
               type="button"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="hidden md:flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
               title="Refresh weather data"
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-blue-500' : ''}`} />
             </button>
-
-            {/* WTTR.in Postal Weather Predictor button */}
-            {onOpenPostalModal && (
-              <button
-                id="postal-weather-btn"
-                type="button"
-                onClick={onOpenPostalModal}
-                className="hidden sm:flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 px-2.5 text-xs font-semibold text-blue-700 shadow-xs transition hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/60 dark:to-indigo-950/40 dark:text-blue-300 dark:hover:from-blue-900/80 dark:hover:to-indigo-900/60 border border-blue-200/60 dark:border-blue-800/60"
-                title="WTTR.in Postal Prediction: Lookup weather by PIN / ZIP code with regional user-db.json"
-              >
-                <Compass className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="hidden md:inline font-bold">ZIP / PIN</span>
-              </button>
-            )}
-
-            {/* Settings button */}
-            <button
-              id="settings-btn"
-              type="button"
-              onClick={onOpenSettings}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
-              title="Settings & Preferences"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-
-            {/* Background Sync & Offline Status */}
-            {onOpenSyncModal && (
-              <button
-                id="background-sync-header-btn"
-                type="button"
-                onClick={onOpenSyncModal}
-                className={`hidden xl:flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold shadow-xs transition ${
-                  isOffline
-                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300'
-                    : isSyncing
-                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300'
-                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700'
-                }`}
-                title="Service Worker Background Sync: Automatically updates cached forecast when network reconnects"
-              >
-                <CloudCheck
-                  className={`h-4 w-4 ${
-                    isSyncing
-                      ? 'animate-pulse text-blue-500'
-                      : isOffline
-                      ? 'text-amber-500'
-                      : 'text-emerald-500'
-                  }`}
-                />
-                <span className="text-[11px]">
-                  {isSyncing ? 'Syncing...' : isOffline ? 'Cached' : 'Auto-Sync'}
-                </span>
-              </button>
-            )}
 
             {/* Unit Toggle (°C / °F) */}
             <div className="flex items-center rounded-xl bg-slate-200/70 p-0.5 text-xs font-bold text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
@@ -540,7 +483,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 id="unit-celsius-btn"
                 type="button"
                 onClick={() => onToggleUnit('celsius')}
-                className={`rounded-lg px-2.5 py-1 transition-all ${
+                className={`rounded-lg px-2 py-1 transition-all ${
                   unit === 'celsius'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'hover:text-slate-900 dark:hover:text-white'
@@ -552,7 +495,7 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 id="unit-fahrenheit-btn"
                 type="button"
                 onClick={() => onToggleUnit('fahrenheit')}
-                className={`rounded-lg px-2.5 py-1 transition-all ${
+                className={`rounded-lg px-2 py-1 transition-all ${
                   unit === 'fahrenheit'
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'hover:text-slate-900 dark:hover:text-white'
@@ -561,6 +504,17 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
                 °F
               </button>
             </div>
+
+            {/* Settings button */}
+            <button
+              id="settings-btn"
+              type="button"
+              onClick={onOpenSettings}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 text-slate-600 shadow-xs transition hover:bg-white hover:text-blue-600 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700"
+              title="Settings & Preferences (Database, API Keys, Platform)"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
 
             {/* Light / Dark Mode Toggle */}
             <button
@@ -576,12 +530,10 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
         </div>
       </header>
 
-      {/* Sub-bar: Moon Phase & Quick Navigation Menu (scrolls off naturally with page, or fades when scrolled) */}
+      {/* Sub-bar: Moon Phase & Quick Navigation Menu (scrolls naturally with the page content) */}
       <div
         id="header-sub-menu"
-        className={`px-4 md:px-6 pb-2 transition-all duration-300 ${
-          isScrolled ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none' : 'opacity-100 max-h-24'
-        }`}
+        className="px-3 md:px-6 pb-2 pt-1 transition-opacity duration-200"
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between flex-wrap gap-2 pt-1">
           {/* Left: Moon Phase & Provider badge */}
@@ -678,6 +630,18 @@ export const WeatherHeader: React.FC<WeatherHeaderProps> = ({
             <button onClick={() => document.getElementById('daily-forecast-card')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">10-Day</button>
             <button onClick={() => document.getElementById('weather-details-grid')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">AQI & Details</button>
             <button onClick={() => document.getElementById('weather-map-section')?.scrollIntoView({ behavior: 'smooth' })} className="px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition shadow-xs backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50">Radar Map</button>
+            {onOpenNewsShareModal && (
+              <button
+                id="quick-nav-share-news-btn"
+                type="button"
+                onClick={onOpenNewsShareModal}
+                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase rounded-full bg-gradient-to-r from-blue-50/90 to-indigo-50/90 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-950/70 dark:to-indigo-950/70 dark:hover:from-blue-900 dark:hover:to-indigo-900 text-blue-700 dark:text-blue-300 transition shadow-xs backdrop-blur-md border border-blue-200/60 dark:border-blue-800/60"
+                title="Share Current Weather as News Report"
+              >
+                <Newspaper className="h-3 w-3" />
+                <span>Share News</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

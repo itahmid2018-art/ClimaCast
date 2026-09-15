@@ -17,6 +17,7 @@ import {
   Sparkles,
   VolumeX,
   Bell,
+  Newspaper,
 } from 'lucide-react';
 import { ProcessedWeather, TemperatureUnit } from '../types';
 import { WeatherIcon } from './WeatherIcon';
@@ -32,9 +33,10 @@ import { SunriseAlarmModal } from './SunriseAlarmModal';
 interface CurrentWeatherHeroProps {
   weather: ProcessedWeather;
   unit: TemperatureUnit;
+  onOpenNewsShare?: () => void;
 }
 
-export const CurrentWeatherHero: React.FC<CurrentWeatherHeroProps> = ({ weather, unit }) => {
+export const CurrentWeatherHero: React.FC<CurrentWeatherHeroProps> = ({ weather, unit, onOpenNewsShare }) => {
   const { current, location, daily } = weather;
   const today = daily[0];
   const condition = getWeatherCondition(current.weatherCode, current.isDay);
@@ -241,6 +243,20 @@ export const CurrentWeatherHero: React.FC<CurrentWeatherHeroProps> = ({ weather,
                   Alarm & Pulse
                 </span>
               </button>
+
+              {/* Share Weather as News Report Quick Pill */}
+              {onOpenNewsShare && (
+                <button
+                  id="hero-share-news-btn"
+                  type="button"
+                  onClick={onOpenNewsShare}
+                  className="flex items-center gap-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur-md border border-white/25 transition ml-1 shadow-xs"
+                  title="Share current weather as an authentic news report (WhatsApp, Twilio SMS, Email, etc.)"
+                >
+                  <Newspaper className="h-3.5 w-3.5 text-sky-200" />
+                  <span>Share as News</span>
+                </button>
+              )}
             </div>
 
           <div className="mt-2 flex items-baseline gap-4 flex-wrap">

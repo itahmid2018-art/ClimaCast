@@ -1,5 +1,21 @@
 {
+  "authorizedUser": {
+    "userId": "usr_itahmid_8197845321",
+    "machineId": "climacast-dev-srv-asia-southeast1",
+    "name": "Tahmid",
+    "email": "itahmid2018@gmail.com",
+    "phone": "+918197845321",
+    "rawPhone": "8197845321",
+    "role": "authorized_user",
+    "verificationStatus": "verified",
+    "registeredAt": "2026-09-14T17:50:00.000Z"
+  },
   "profile": {
+    "userId": "usr_itahmid_8197845321",
+    "machineId": "climacast-dev-srv-asia-southeast1",
+    "name": "Tahmid",
+    "email": "itahmid2018@gmail.com",
+    "phone": "+918197845321",
     "country": "India",
     "countryCode": "IN",
     "state": "Karnataka",
@@ -9,7 +25,7 @@
     "defaultZipPin": "560001",
     "autoResolveOnZipInput": true,
     "wttrPrecisionMode": true,
-    "lastUpdated": "2026-09-14T16:53:59.140Z"
+    "lastUpdated": "2026-09-14T17:51:00.000Z"
   },
   "savedZipPins": [
     {

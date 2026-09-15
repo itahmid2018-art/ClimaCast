@@ -9,6 +9,13 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import {
+  syncAllDataToSqlite,
+  logTwilioMessage,
+  logWeatherNewsDispatch,
+  getSqliteStats,
+  getAllSqliteData,
+} from './server/sqliteDb';
 
 dotenv.config();
 
@@ -144,6 +151,11 @@ function saveUserDbData(patch: Partial<UserDbData>): UserDbData {
       savedZipPins: patch.savedZipPins ? patch.savedZipPins : current.savedZipPins,
     };
     fs.writeFileSync(USER_DB_FILE, JSON.stringify(updated, null, 2));
+    try {
+      syncAllDataToSqlite();
+    } catch (e) {
+      console.warn('[SQLite] Sync failed on user-db update:', e);
+    }
     return updated;
   } catch (err) {
     console.error('Failed to write to user-db.json', err);
@@ -204,6 +216,11 @@ function saveDbData(patch: Partial<DbData>) {
       keys: patch.keys ? { ...current.keys, ...patch.keys } : current.keys,
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(updated, null, 2));
+    try {
+      syncAllDataToSqlite();
+    } catch (e) {
+      console.warn('[SQLite] Sync failed on db update:', e);
+    }
     return updated;
   } catch (err) {
     console.error('Failed to write to db.json', err);
@@ -1167,6 +1184,389 @@ app.get('/api/weather/tiles/:layer/:z/:x/:y.png', async (req: Request, res: Resp
   }
 });
 
+// Share Status Check (detects if Twilio credentials are configured)
+app.get('/api/share/status', (_req: Request, res: Response) => {
+  const twilioSid = getApiKey('TWILIO_ACCOUNT_SID') || process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = getApiKey('TWILIO_AUTH_TOKEN') || process.env.TWILIO_AUTH_TOKEN;
+  const twilioPhone = getApiKey('TWILIO_PHONE_NUMBER') || process.env.TWILIO_PHONE_NUMBER;
+
+  const twilioConfigured = Boolean(twilioSid && twilioToken && twilioPhone);
+
+  res.json({
+    twilioConfigured,
+    fromPhoneMasked: twilioPhone ? `${twilioPhone.slice(0, 3)}***${twilioPhone.slice(-4)}` : null,
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+  });
+});
+
+// Twilio SMS Weather News Report Dispatch Endpoint
+app.post('/api/share/twilio', async (req: Request, res: Response): Promise<any> => {
+  const { to, message, headline, location } = req.body;
+
+  if (!to || !message) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required parameters: "to" (phone number) and "message" (news report text) are required.',
+    });
+  }
+
+  const accountSid = getApiKey('TWILIO_ACCOUNT_SID') || process.env.TWILIO_ACCOUNT_SID;
+  const authToken = getApiKey('TWILIO_AUTH_TOKEN') || process.env.TWILIO_AUTH_TOKEN;
+  const fromPhone = getApiKey('TWILIO_PHONE_NUMBER') || process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !fromPhone) {
+    return res.status(200).json({
+      success: false,
+      configured: false,
+      error: 'Twilio SMS service is not configured in environment variables.',
+      hint: 'Configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in your environment, or choose WhatsApp / Native SMS sharing.',
+    });
+  }
+
+  // Format recipient phone number (remove extra spaces and hyphens)
+  const cleanTo = to.trim();
+
+  try {
+    const twilioEndpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+    const formParams = new URLSearchParams();
+    formParams.append('To', cleanTo);
+    formParams.append('From', fromPhone);
+    formParams.append('Body', message);
+
+    const twilioRes = await fetch(twilioEndpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formParams.toString(),
+    });
+
+    const data = (await twilioRes.json()) as any;
+
+    // Log message to SQLite
+    logTwilioMessage({
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      to_phone: cleanTo,
+      from_phone: fromPhone,
+      message_body: message,
+      status: twilioRes.ok ? 'sent' : 'failed',
+      error_code: data.code || null,
+      error_message: data.message || null,
+      sid: data.sid || null,
+      raw_response: JSON.stringify(data),
+    });
+
+    if (twilioRes.ok) {
+      logWeatherNewsDispatch({
+        location_name: location || 'Current Location',
+        condition: 'Weather News Report',
+        temperature: 0,
+        unit: 'C',
+        channel: 'twilio_sms',
+        recipient: cleanTo,
+        headline: headline || 'Weather Report Broadcast',
+        report_text: message,
+      });
+    }
+
+    if (!twilioRes.ok) {
+      return res.status(400).json({
+        success: false,
+        configured: true,
+        error: data.message || 'Twilio SMS dispatch failed.',
+        code: data.code,
+      });
+    }
+
+    return res.json({
+      success: true,
+      configured: true,
+      sid: data.sid,
+      status: data.status,
+      to: data.to,
+      dateCreated: data.date_created,
+    });
+  } catch (err: any) {
+    console.error('[Twilio Dispatch Error]', err);
+    logTwilioMessage({
+      id: `err_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      to_phone: cleanTo,
+      from_phone: fromPhone,
+      message_body: message,
+      status: 'error',
+      error_message: err.message,
+    });
+    return res.status(500).json({
+      success: false,
+      configured: true,
+      error: err.message || 'Internal error while dispatching SMS via Twilio.',
+    });
+  }
+});
+
+// Live Twilio SMS Test Dispatch (sends a hello message to the authorized user)
+app.post('/api/twilio/test-hello', async (req: Request, res: Response): Promise<any> => {
+  const authorizedPhone = process.env.AUTHORIZED_USER_PHONE || '+918197845321';
+  const targetPhone = (req.body.to as string) || authorizedPhone;
+  const machineId = process.env.MACHINE_ID || 'climacast-dev-srv-asia-southeast1';
+  const uniqueUserId = process.env.UNIQUE_USER_ID || 'usr_itahmid_8197845321';
+  const customGreeting =
+    (req.body.message as string) ||
+    `Hello Tahmid! ClimaCast Weather service verification test from node ${machineId}. Local time: ${new Date().toISOString()}`;
+
+  const accountSid = getApiKey('TWILIO_ACCOUNT_SID') || process.env.TWILIO_ACCOUNT_SID;
+  const authToken = getApiKey('TWILIO_AUTH_TOKEN') || process.env.TWILIO_AUTH_TOKEN;
+  const fromPhone = getApiKey('TWILIO_PHONE_NUMBER') || process.env.TWILIO_PHONE_NUMBER || '8197845321';
+
+  if (!accountSid || !authToken || !fromPhone) {
+    return res.status(400).json({
+      success: false,
+      configured: false,
+      error: 'Twilio credentials not configured in environment or database.',
+      authorizedUser: { phone: authorizedPhone, email: process.env.AUTHORIZED_USER_EMAIL || 'itahmid2018@gmail.com' },
+    });
+  }
+
+  const cleanTo = targetPhone.trim().startsWith('+') ? targetPhone.trim() : `+91${targetPhone.trim().replace(/^0+/, '')}`;
+  const timestamp = new Date().toISOString();
+
+  try {
+    const twilioEndpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+    const formParams = new URLSearchParams();
+    formParams.append('To', cleanTo);
+    formParams.append('From', fromPhone);
+    formParams.append('Body', customGreeting);
+
+    const twilioRes = await fetch(twilioEndpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formParams.toString(),
+    });
+
+    const data = (await twilioRes.json()) as any;
+    const isSuccess = twilioRes.ok;
+
+    let statusDescription: 'sent' | 'trial_template_restricted' | 'failed' = isSuccess ? 'sent' : 'failed';
+    if (data.code === 572006) {
+      statusDescription = 'trial_template_restricted';
+    }
+
+    // Record into SQLite
+    logTwilioMessage({
+      id: `test_${Date.now()}`,
+      timestamp,
+      to_phone: cleanTo,
+      from_phone: fromPhone,
+      message_body: customGreeting,
+      status: statusDescription,
+      error_code: data.code || null,
+      error_message: data.message || null,
+      sid: data.sid || null,
+      raw_response: JSON.stringify(data),
+    });
+
+    // Update db.json and trigger SQLite auto-sync
+    saveDbData({
+      ...getDbData(),
+      ...({
+        machineId,
+        uniqueUserId,
+        authorizedUser: {
+          name: process.env.AUTHORIZED_USER_NAME || 'Tahmid',
+          email: process.env.AUTHORIZED_USER_EMAIL || 'itahmid2018@gmail.com',
+          phone: cleanTo,
+          rawPhone: '8197845321',
+          status: 'authorized',
+        },
+        twilioIntegration: {
+          configured: true,
+          accountSidMasked: `${accountSid.slice(0, 6)}...${accountSid.slice(-4)}`,
+          fromPhone,
+          authorizedRecipient: cleanTo,
+          lastTestedAt: timestamp,
+          testStatus: statusDescription,
+          testErrorCode: data.code || null,
+          testErrorMessage: data.message || (isSuccess ? 'Message dispatched successfully' : 'SMS dispatch returned status code'),
+          helloMessage: customGreeting,
+          note: data.code === 572006
+            ? 'Twilio trial accounts enforce predefined SMS template restrictions on custom message bodies until upgraded.'
+            : isSuccess
+            ? 'SMS successfully submitted to Twilio message queue.'
+            : 'SMS dispatch error.',
+        },
+      } as any),
+    });
+
+    return res.json({
+      success: isSuccess,
+      attempted: true,
+      statusCode: twilioRes.status,
+      to: cleanTo,
+      from: fromPhone,
+      sid: data.sid || null,
+      status: statusDescription,
+      code: data.code || null,
+      message: data.message || (isSuccess ? 'Hello message successfully dispatched via Twilio!' : 'Twilio dispatch completed with trial response.'),
+      sqliteLogged: true,
+      dbUpdated: true,
+      authorizedUser: {
+        name: process.env.AUTHORIZED_USER_NAME || 'Tahmid',
+        phone: cleanTo,
+        email: process.env.AUTHORIZED_USER_EMAIL || 'itahmid2018@gmail.com',
+        userId: uniqueUserId,
+        machineId,
+      },
+      hint: data.code === 572006
+        ? 'Twilio trial account active: custom outbound SMS requires predefined templates or upgraded account. WhatsApp & native share remain active.'
+        : undefined,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      attempted: true,
+      error: err.message,
+    });
+  }
+});
+
+// SQLite Database Status & Telemetry - Exclusive to the Web Version
+app.get('/api/sqlite/status', (req: Request, res: Response): any => {
+  try {
+    const platform = (req.query.platform as string) || (req.headers['x-platform-view'] as string) || 'web';
+    if (platform !== 'web') {
+      return res.json({
+        success: true,
+        webExclusive: true,
+        active: false,
+        platform,
+        message: `SQLite database persistence is exclusive to the Web version. Platform '${platform}' operates with local client cache.`,
+      });
+    }
+    const stats = getSqliteStats();
+    return res.json({
+      success: true,
+      webExclusive: true,
+      active: true,
+      platform: 'web',
+      stats,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// SQLite Complete Data Dump - Exclusive to the Web Version
+app.get('/api/sqlite/dump', (req: Request, res: Response): any => {
+  try {
+    const platform = (req.query.platform as string) || (req.headers['x-platform-view'] as string) || 'web';
+    if (platform !== 'web') {
+      return res.json({
+        success: true,
+        webExclusive: true,
+        active: false,
+        platform,
+        data: null,
+        message: 'SQLite complete data dump is exclusive to the Web version.',
+      });
+    }
+    const all = getAllSqliteData();
+    return res.json({
+      success: true,
+      webExclusive: true,
+      active: true,
+      platform: 'web',
+      data: all,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Force Sync JSON & Environment to SQLite - Exclusive to the Web Version
+app.post('/api/sqlite/sync', (req: Request, res: Response): any => {
+  try {
+    const platform = (req.query.platform as string) || (req.body?.platform as string) || (req.headers['x-platform-view'] as string) || 'web';
+    if (platform !== 'web') {
+      return res.json({
+        success: true,
+        webExclusive: true,
+        active: false,
+        platform,
+        message: `SQLite sync bypassed: SQLite database is exclusive to the Web version. Platform '${platform}' operates with local storage.`,
+      });
+    }
+    const stats = syncAllDataToSqlite();
+    return res.json({
+      success: true,
+      webExclusive: true,
+      active: true,
+      platform: 'web',
+      message: 'All JSON and configuration data synchronized to SQLite (Web exclusive)',
+      stats,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+// AI News Anchor Script Generation (Gemini or Meteorological Synthesis)
+app.post('/api/share/ai-news-script', async (req: Request, res: Response): Promise<any> => {
+  const { locationName, condition, temperature, unit, style, anchorName, customNote, recipientName } = req.body;
+
+  const ai = getGenAI();
+  if (!ai) {
+    return res.json({
+      success: true,
+      source: 'Meteorological Synthesis Engine',
+      script: `This is ${anchorName || 'Chief Meteorologist'} reporting live from the ClimaCast Desk. In ${locationName || 'your area'}, conditions are currently ${condition || 'clear'} with temperatures at ${temperature}°${unit || 'C'}.${customNote ? ` Note: "${customNote}".` : ''}`,
+    });
+  }
+
+  try {
+    const prompt = `You are a charismatic, professional television/radio news weather anchor broadcasting a weather news dispatch.
+Location: ${locationName}
+Condition: ${condition}
+Current Temperature: ${temperature}°${unit}
+Broadcast Style: ${style || 'TV News Anchor'}
+Anchor Name: ${anchorName || 'Meteorologist'}
+${recipientName ? `Addressed to recipient: ${recipientName}` : ''}
+${customNote ? `Special dispatch note: "${customNote}"` : ''}
+
+Draft an engaging, professional 3-paragraph news report script that the user can share to their friends or colleagues via WhatsApp, SMS, or Email. Include a breaking news headline, anchor lead-in, and weather advice.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: 'You are ClimaCast Newsroom Desk. Produce punchy, crisp, engaging broadcast scripts.',
+      },
+    });
+
+    return res.json({
+      success: true,
+      source: 'Gemini AI Newsroom',
+      script: response.text || '',
+    });
+  } catch (err: any) {
+    return res.json({
+      success: true,
+      source: 'Meteorological Synthesis Fallback',
+      script: `ClimaCast Weather News Desk: Current telemetry for ${locationName} indicates ${condition} at ${temperature}°${unit}. Stay weather-aware!`,
+    });
+  }
+});
+
 async function startServer() {
   // Serve About page
   app.get('/about.html', (_req: Request, res: Response) => {
@@ -1193,6 +1593,13 @@ async function startServer() {
     app.get('*', (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
+  }
+
+  try {
+    const stats = syncAllDataToSqlite();
+    console.log('[SQLite DB] Initialized and synchronized:', stats.tables);
+  } catch (err) {
+    console.error('[SQLite DB] Initial sync warning:', err);
   }
 
   app.listen(PORT, '0.0.0.0', () => {

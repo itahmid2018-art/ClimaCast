@@ -21,6 +21,7 @@ import {
   ArrowRight,
   BookmarkPlus,
   Trash2,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { TemperatureUnit, ThemeMode, GeoLocation, SavedPostalPin } from '../types';
 import {
@@ -52,7 +53,63 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSelectPlatformView,
   onSelectLocation,
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'region' | 'ai' | 'weather'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'region' | 'database' | 'ai' | 'weather'>('general');
+
+  // SQLite Status & Sync State (Web-Exclusive)
+  const [sqliteStatus, setSqliteStatus] = useState<any>(null);
+  const [isSqliteLoading, setIsSqliteLoading] = useState(false);
+  const [sqliteSyncResult, setSqliteSyncResult] = useState<string | null>(null);
+
+  // Weather Background Imagery Mode (Responsive Photography vs Ultra Data Saver)
+  const [bgMode, setBgMode] = useState<'responsive' | 'gradients_only'>(() => {
+    const saved = localStorage.getItem('climacast_bg_image_mode');
+    if (saved === 'gradients_only') return 'gradients_only';
+    return 'responsive';
+  });
+
+  const handleBgModeChange = (mode: 'responsive' | 'gradients_only') => {
+    setBgMode(mode);
+    localStorage.setItem('climacast_bg_image_mode', mode);
+    window.dispatchEvent(new Event('climacast_bg_mode_changed'));
+  };
+
+  const loadSqliteStatus = async () => {
+    setIsSqliteLoading(true);
+    try {
+      const res = await fetch(`/api/sqlite/status?platform=${platformView}`);
+      const data = await res.json();
+      setSqliteStatus(data);
+    } catch (err: any) {
+      setSqliteStatus({ success: false, error: err.message });
+    } finally {
+      setIsSqliteLoading(false);
+    }
+  };
+
+  const triggerSqliteSync = async () => {
+    setIsSqliteLoading(true);
+    setSqliteSyncResult(null);
+    try {
+      const res = await fetch('/api/sqlite/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: platformView }),
+      });
+      const data = await res.json();
+      setSqliteSyncResult(data.message || 'Synchronization completed.');
+      await loadSqliteStatus();
+    } catch (err: any) {
+      setSqliteSyncResult(`Sync failed: ${err.message}`);
+    } finally {
+      setIsSqliteLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'database') {
+      loadSqliteStatus();
+    }
+  }, [activeTab, platformView]);
 
   // Regional Profile State (persisted in user-db.json)
   const [profileCountry, setProfileCountry] = useState('United States');
@@ -273,6 +330,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Globe className="h-4 w-4" /> Country & Region
             </button>
             <button
+              onClick={() => setActiveTab('database')}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap ${activeTab === 'database' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+            >
+              <Database className="h-4 w-4" /> SQLite & DB
+            </button>
+            <button
               onClick={() => setActiveTab('ai')}
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap ${activeTab === 'ai' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
             >
@@ -326,6 +389,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
                       <input type="radio" checked={platformView === 'extension'} onChange={() => onSelectPlatformView('extension')} className="w-4 h-4 text-blue-600" />
                       <span className="text-sm text-slate-700 dark:text-slate-200">Chrome Extension Layout</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span>Weather Background Imagery &amp; Bandwidth</span>
+                    </h3>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                      Lazy Loading &amp; Responsive
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className={`flex items-start gap-3 p-3 rounded-xl border transition cursor-pointer ${
+                      bgMode === 'responsive'
+                        ? 'border-blue-500/80 bg-blue-50/50 dark:bg-blue-950/30 dark:border-blue-800'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="bgMode"
+                        checked={bgMode === 'responsive'}
+                        onChange={() => handleBgModeChange('responsive')}
+                        className="mt-0.5 w-4 h-4 text-blue-600"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            Responsive Photography (Auto-Optimized)
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded font-semibold">
+                            Recommended
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Lazy-loads compressed responsive image sources tailored to device width (640w mobile, 1080w tablet, 1920w desktop). Cached in Service Worker for instant offline availability with zero layout shifts.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label className={`flex items-start gap-3 p-3 rounded-xl border transition cursor-pointer ${
+                      bgMode === 'gradients_only'
+                        ? 'border-blue-500/80 bg-blue-50/50 dark:bg-blue-950/30 dark:border-blue-800'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="bgMode"
+                        checked={bgMode === 'gradients_only'}
+                        onChange={() => handleBgModeChange('gradients_only')}
+                        className="mt-0.5 w-4 h-4 text-blue-600"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            Atmospheric Gradients Only (Ultra Data Saver)
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 rounded font-semibold">
+                            Zero Images
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Completely halts background image downloads and renders instant CSS color gradients matching current weather conditions. Ideal for metered mobile data, roaming, or maximum battery conservation.
+                        </p>
+                      </div>
                     </label>
                   </div>
                 </div>
@@ -645,6 +776,139 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'database' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {/* Information Banner */}
+                <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/50 p-4 border border-blue-100 dark:from-blue-950/30 dark:to-indigo-950/20 dark:border-blue-900/50">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
+                      <Database className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-xs font-bold text-blue-950 dark:text-blue-200 uppercase tracking-wide">
+                          SQLite Database Engine
+                        </h4>
+                        <span
+                          className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                            platformView === 'web'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                              : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+                          }`}
+                        >
+                          {platformView === 'web'
+                            ? 'Web Exclusive • Active'
+                            : `Bypassed (${platformView.toUpperCase()} Mode)`}
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-900/80 dark:text-blue-300/90 leading-relaxed">
+                        SQLite persistence is <strong>exclusive to the Web version</strong>. The application uses a 3-tier persistence strategy: <strong>.env</strong> is the default fallback for essential host and API keys; <strong>user-db.json</strong> and <strong>db.json</strong> temporarily maintain user details with unique user and machine node IDs; and the <strong>SQLite DB</strong> (<code>climacast.sqlite</code>) durably records all configuration, dispatches, and logs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Storage Hierarchy Architecture */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">
+                    Storage Architecture & Fallback Flow
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">1. .env (Default)</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                        Default fallback with all essential variables required to host and run smoothly (keys, tokens, IDs).
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-indigo-500"></span>
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">2. JSON Files</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                        Maintains user profile and locations temporarily in <code>user-db.json</code> &amp; <code>db.json</code>.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">3. SQLite (Web Only)</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                        Durable relational store. Bypassed in mobile/extension mode in favor of client cache.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Database Metrics & Sync */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      SQLite Table Metrics
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={triggerSqliteSync}
+                      disabled={isSqliteLoading || platformView !== 'web'}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-xs cursor-pointer"
+                    >
+                      {isSqliteLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Database className="h-3.5 w-3.5" />
+                      )}
+                      <span>Sync to SQLite</span>
+                    </button>
+                  </div>
+
+                  {sqliteSyncResult && (
+                    <div className="p-2.5 rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-xs border border-blue-200/80 dark:border-blue-800/80">
+                      {sqliteSyncResult}
+                    </div>
+                  )}
+
+                  {platformView !== 'web' ? (
+                    <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-200 text-xs space-y-1">
+                      <p className="font-bold">SQLite is inactive for {platformView.toUpperCase()} mode.</p>
+                      <p>As per requirements, SQLite is exclusive to the web version. Mobile and extension layouts use local storage to ensure offline independence.</p>
+                    </div>
+                  ) : isSqliteLoading && !sqliteStatus ? (
+                    <div className="flex items-center justify-center p-6 text-slate-400">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      <span>Reading SQLite tables...</span>
+                    </div>
+                  ) : sqliteStatus?.stats ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {Object.entries(sqliteStatus.stats.counts || {}).map(([table, count]) => (
+                        <div
+                          key={table}
+                          className="p-3 rounded-xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-800/60"
+                        >
+                          <div className="text-[10px] uppercase font-mono text-slate-400 tracking-wider truncate" title={table}>
+                            {table.replace(/_/g, ' ')}
+                          </div>
+                          <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                            {String(count)} <span className="text-[10px] font-normal text-slate-400">records</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-slate-50 text-slate-500 text-xs dark:bg-slate-800">
+                      Click "Sync to SQLite" to inspect or synchronize web database records.
                     </div>
                   )}
                 </div>

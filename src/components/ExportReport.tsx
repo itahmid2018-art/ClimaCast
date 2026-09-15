@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Download, FileText, FileJson, Copy, Check, ChevronDown, TableProperties } from 'lucide-react';
+import { Download, FileText, FileJson, Copy, Check, ChevronDown, TableProperties, Newspaper } from 'lucide-react';
 import { ProcessedWeather, TemperatureUnit } from '../types';
 import { getWeatherCondition } from '../utils/weatherCodes';
 
 interface ExportReportProps {
   weather: ProcessedWeather;
   unit: TemperatureUnit;
+  onOpenNewsShare?: () => void;
 }
 
-export const ExportReport: React.FC<ExportReportProps> = ({ weather, unit }) => {
+export const ExportReport: React.FC<ExportReportProps> = ({ weather, unit, onOpenNewsShare }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -68,8 +69,25 @@ Precipitation Probability: ${weather.daily[0]?.precipitationProbabilityMax}%
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-[100] mt-2 w-48 origin-top-right rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 focus:outline-none dark:border-slate-700 dark:bg-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute right-0 z-[100] mt-2 w-52 origin-top-right rounded-xl border border-slate-200 bg-white shadow-xl ring-1 ring-black/5 focus:outline-none dark:border-slate-700 dark:bg-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="p-1">
+            {onOpenNewsShare && (
+              <>
+                <button
+                  id="export-dropdown-share-news-btn"
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpenNewsShare();
+                  }}
+                  className="group flex w-full items-center gap-2 rounded-lg bg-blue-50/60 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60"
+                >
+                  <Newspaper className="h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition" />
+                  <span>Share as News Report</span>
+                </button>
+                <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+              </>
+            )}
             <button
               onClick={handleCopyText}
               className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-700"

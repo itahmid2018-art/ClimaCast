@@ -41,6 +41,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { PostalWeatherModal } from './components/PostalWeatherModal';
 import { fetchUserProfile, resolvePostalLocation } from './services/userProfileApi';
 import { Earth3DModal } from './components/Earth3DModal';
+import { NewsReportShareModal } from './components/NewsReportShareModal';
 import { WeatherBackground } from './components/WeatherBackground';
 import { ExportReport } from './components/ExportReport';
 import { getWeatherCondition } from './utils/weatherCodes';
@@ -221,6 +222,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPostalModal, setShowPostalModal] = useState(false);
   const [showEarthModal, setShowEarthModal] = useState(false);
+  const [showNewsShareModal, setShowNewsShareModal] = useState(false);
   const [isSimulatedAlertActive, setIsSimulatedAlertActive] = useState(false);
   
   const [insights, setInsights] = useState<WeatherInsightData | null>(null);
@@ -472,6 +474,7 @@ export default function App() {
           onOpenPostalModal={() => setShowPostalModal(true)}
           weather={weather || undefined}
           onOpenEarthModal={() => setShowEarthModal(true)}
+          onOpenNewsShareModal={() => setShowNewsShareModal(true)}
           notificationSettings={notificationSettings}
           onUpdateNotificationSettings={(newSettings) => {
             setNotificationSettings(newSettings);
@@ -583,7 +586,11 @@ export default function App() {
               />
               
               {/* Current Hero */}
-              <CurrentWeatherHero weather={weather} unit={unit} />
+              <CurrentWeatherHero
+                weather={weather}
+                unit={unit}
+                onOpenNewsShare={() => setShowNewsShareModal(true)}
+              />
 
               {/* Pinned Widgets Section (Quick Access) */}
               <PinnedWidgetsSection
@@ -731,6 +738,16 @@ export default function App() {
         onPinAll={handlePinAllWidgets}
         onClearAll={handleClearAllWidgets}
       />
+
+      {/* News Report Sharing Modal (WhatsApp, Twilio, Email, SMS, Web Share) */}
+      {weather && (
+        <NewsReportShareModal
+          isOpen={showNewsShareModal}
+          onClose={() => setShowNewsShareModal(false)}
+          weather={weather}
+          unit={unit}
+        />
+      )}
     </div>
   );
 }
