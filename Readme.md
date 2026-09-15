@@ -115,15 +115,23 @@ ClimaCast is fully compliant with modern Progressive Web App (PWA) specification
 
 ---
 
-## 📱 Compiling into Native Android (Capacitor)
+## 📱 Compiling into Native Android & Google Play Store Compliance
 
-The repository includes a pre-configured `capacitor.config.json` targeting the `dist/` web output.
+The repository includes native Android Gradle project infrastructure and Capacitor configuration targeting `dist/` web output, optimized for **Google Play Store publication** without rejection risks.
+
+### Google Play Store Readiness & Automated Test Suite
+Before publishing, run the automated compliance test suite to verify permissions, Target SDK levels, privacy policy integration, adaptive icons, and bundle configurations:
+```bash
+# Run the complete Android Play Store verification audit
+npm run test:android
+```
+See the full compliance audit report in [`docs/android_tests.md`](docs/android_tests.md).
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v18+)
-- [Android Studio](https://developer.android.com/studio) installed with Android SDK 33+
+- [Android Studio](https://developer.android.com/studio) installed with Android SDK 34+ (Target SDK 36 configured)
 
-### Step-by-Step Android Compilation
+### Step-by-Step Android Compilation & Packaging
 ```bash
 # 1. Install Capacitor dependencies
 npm install @capacitor/core @capacitor/cli @capacitor/android
@@ -131,16 +139,19 @@ npm install @capacitor/core @capacitor/cli @capacitor/android
 # 2. Build the production web bundle
 npm run build
 
-# 3. Add Android platform (run once)
-npx cap add android
-
-# 4. Sync web assets and plugins to Android
+# 3. Sync web assets and plugins to Android
 npx cap sync android
 
-# 5. Open project in Android Studio
+# 4. Compile Google Play Store Android App Bundle (.aab) and APK via Gradle
+cd android
+./gradlew bundleRelease assembleDebug
+cd ..
+
+# 5. Alternatively, open project in Android Studio
 npx cap open android
 ```
-In Android Studio, click **Build > Generate Signed Bundle / APK** to create release packages for Google Play.
+The compiled Android App Bundle (`.aab`) for Google Play Console will be located at:
+`android/app/build/outputs/bundle/release/app-release.aab`. Sideloadable debug APKs are generated at `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 

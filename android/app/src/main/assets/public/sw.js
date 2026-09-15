@@ -9,6 +9,7 @@
 
 const STATIC_CACHE_NAME = 'google-weather-static-v2';
 const WEATHER_CACHE_NAME = 'google-weather-api-cache-v1';
+const IMAGE_CACHE_NAME = 'climacast-weather-bg-cache-v1';
 
 const STATIC_ASSETS = [
   '/',
@@ -42,7 +43,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys
-          .filter((key) => key !== STATIC_CACHE_NAME && key !== WEATHER_CACHE_NAME)
+          .filter((key) => key !== STATIC_CACHE_NAME && key !== WEATHER_CACHE_NAME && key !== IMAGE_CACHE_NAME)
           .map((key) => caches.delete(key))
       );
     })
@@ -247,7 +248,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. For all same-origin static assets: Offline-first with network fallback & background update
+  // 3. Intercept Responsive Weather Background Images (Cache-First to conserve bandwidth and support offline)
+  if (url.hostname === 'images.unsplash.com') {
+    event.respondWith(
+      (async () => {
+        const imageCache = await caches.open(IMAGE_CACHE_NAME);
+        const cachedResponse = await imageCache.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            imageCache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (err) {
+          if (cachedResponse) return cachedResponse;
+          throw err;
+        }
+      })()
+    );
+    return;
+  }
+
+  // 4. For all same-origin static assets: Offline-first with network fallback & background update
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {

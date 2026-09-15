@@ -252,6 +252,14 @@ iOS Build:
     console.log(`✅ Included compiled Android APK: ${releaseApkName}`);
   }
 
+  // Check if compiled Google Play Store Android App Bundle (.aab) exists and copy it
+  const aabSource = path.join(ROOT_DIR, 'android', 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
+  const releaseAabName = `climacast-android-playstore-${version}.aab`;
+  if (fs.existsSync(aabSource)) {
+    fs.copyFileSync(aabSource, path.join(ARTIFACTS_DIR, releaseAabName));
+    console.log(`✅ Included Google Play Store Android App Bundle (.aab): ${releaseAabName}`);
+  }
+
   // Clean up temporary assembly folder
   if (fs.existsSync(tempDir)) {
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -267,7 +275,7 @@ iOS Build:
 export function generateChecksumsAndNotes(version) {
   console.log('🔒 Generating SHA-256 Checksums for all release artifacts...');
   const artifactFiles = fs.readdirSync(ARTIFACTS_DIR).filter((f) => 
-    f.endsWith('.zip') || f.endsWith('.tar.gz') || f.endsWith('.apk') || f.endsWith('.ipa')
+    f.endsWith('.zip') || f.endsWith('.tar.gz') || f.endsWith('.apk') || f.endsWith('.aab') || f.endsWith('.ipa')
   );
   const checksumLines = [];
   const checksumTableLines = [];
@@ -282,7 +290,10 @@ export function generateChecksumsAndNotes(version) {
 
     let description = 'Release package';
     let icon = '📦';
-    if (file.includes('android') && file.endsWith('.apk')) {
+    if (file.includes('android') && file.endsWith('.aab')) {
+      icon = '🏪';
+      description = 'Google Play Store Android App Bundle (.aab). Upload directly to Google Play Console releases.';
+    } else if (file.includes('android') && file.endsWith('.apk')) {
       icon = '🤖';
       description = 'Android direct installation package (APK). Sideload & run on any Android phone.';
     } else if (file.includes('ios-simulator')) {
@@ -339,7 +350,8 @@ ${checksumTableLines.join('\n')}
 
 ## 🚀 Installation & Quick Start
 
-- **🤖 Android Phone**: Download \`climacast-android-*.apk\`, transfer to your Android device (or download directly in mobile browser), tap to install ("Install Unknown Apps").
+- **🏪 Google Play Store**: Upload \`climacast-android-playstore-*.aab\` directly to Google Play Console ("Create new release").
+- **🤖 Android Direct (APK)**: Download \`climacast-android-*.apk\`, transfer to your Android device (or download directly in mobile browser), tap to install ("Install Unknown Apps").
 - **🌐 Web / PWA**: Extract \`climacast-web-pwa-*.zip\` to your web hosting provider or deploy via GitHub Pages.
 - **🧩 Google Chrome**: Download and unzip \`climacast-chrome-extension-*.zip\`, navigate to \`chrome://extensions/\`, enable **Developer mode**, and select **Load unpacked**.
 - **🍎 Apple iOS**:

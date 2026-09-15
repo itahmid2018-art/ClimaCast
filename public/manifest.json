@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "short_name": "Weather",
-  "name": "Google Weather",
-  "description": "Google standard weather web application powered by Open-Meteo",
+  "short_name": "ClimaCast",
+  "name": "ClimaCast Weather",
+  "description": "Accurate, real-time meteorological forecasts, radar, and air quality diagnostics powered by Open-Meteo and PurpleAir",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

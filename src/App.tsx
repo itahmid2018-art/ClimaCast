@@ -239,6 +239,47 @@ export default function App() {
   });
   const [showWidgetModal, setShowWidgetModal] = useState(false);
 
+  // Android hardware/gesture back button handler to dismiss open modals smoothly
+  useEffect(() => {
+    const handleBackButton = (e: Event) => {
+      if (showSettingsModal) {
+        e.preventDefault();
+        setShowSettingsModal(false);
+      } else if (showPostalModal) {
+        e.preventDefault();
+        setShowPostalModal(false);
+      } else if (showGuideModal) {
+        e.preventDefault();
+        setShowGuideModal(false);
+      } else if (showSyncModal) {
+        e.preventDefault();
+        setShowSyncModal(false);
+      } else if (showEarthModal) {
+        e.preventDefault();
+        setShowEarthModal(false);
+      } else if (showNewsShareModal) {
+        e.preventDefault();
+        setShowNewsShareModal(false);
+      } else if (showWidgetModal) {
+        e.preventDefault();
+        setShowWidgetModal(false);
+      }
+    };
+
+    document.addEventListener('backbutton', handleBackButton);
+    return () => {
+      document.removeEventListener('backbutton', handleBackButton);
+    };
+  }, [
+    showSettingsModal,
+    showPostalModal,
+    showGuideModal,
+    showSyncModal,
+    showEarthModal,
+    showNewsShareModal,
+    showWidgetModal,
+  ]);
+
   const handleTogglePin = useCallback((id: WeatherWidgetId) => {
     setPinnedWidgets((prev) => {
       const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];

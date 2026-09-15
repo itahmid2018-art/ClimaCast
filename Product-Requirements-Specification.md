@@ -284,6 +284,28 @@ All Open-Meteo `weather_code` integer values map to WMO standard conditions:
 - Required permissions: `["geolocation", "storage"]`.
 - Host permissions: `["https://api.open-meteo.com/*", "https://geocoding-api.open-meteo.com/*", "https://air-quality-api.open-meteo.com/*"]`.
 
+### 7.4 Google Play Store Publication & Android Compliance Specification
+- **Target SDK Compliance**: `targetSdkVersion = 36` and `compileSdkVersion = 36` (fully conforms to Google Play mandate requiring API 34+).
+- **Package & Naming**: Package ID `com.climacast.weather`, Application Title `ClimaCast` (under 30 characters, zero trademark infringement).
+- **Location Policy**:
+  - `ACCESS_BACKGROUND_LOCATION` strictly prohibited and omitted.
+  - Foreground location permissions (`ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`) only.
+  - `android.hardware.location.gps` declared with `android:required="false"` to allow installation on tablets and non-GPS devices.
+- **Privacy & Data Safety Disclosures**:
+  - Standalone Privacy Policy hosted at `public/privacy-policy.html` adhering to Google Play User Data policies (location disclosure, zero-advertising guarantee, COPPA compliance, and user data deletion right).
+  - In-App Privacy Policy accessibility directly embedded in Settings (`SettingsModal.tsx`).
+- **Visual Assets**:
+  - Complete launcher icon densities (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`).
+  - Adaptive icons (`mipmap-anydpi-v26`) with separate foreground and background vectors.
+  - 512x512 high-resolution store listing graphic.
+- **Navigation Quality**:
+  - Hardware/Gesture back button listener in `App.tsx` dismissing open modals and overlays cleanly without crashing or abruptly exiting.
+- **Build Artifact Format**:
+  - Builds Google Play mandated Android App Bundle (`.aab`) via `./gradlew bundleRelease`.
+  - Continuous release automation via `.github/workflows/release.yml` publishing `.aab` artifacts to GitHub Releases.
+- **Automated Verification**:
+  - Suite executable via `npm run test:android` with 19 automated policy compliance checks. Complete documentation in `docs/android_tests.md`.
+
 ---
 
 ## 8. Verification & Acceptance Criteria

@@ -491,3 +491,49 @@ For traditional shared hosting plans (Hostinger, Namecheap, Bluehost, GoDaddy).
 ### Issue 4: Ephemeral Storage Resetting Saved Locations
 - **Cause**: On container platforms like GCP Cloud Run or AWS App Runner, files written to disk (`db.json`) are erased when instances scale to zero or restart.
 - **Fix**: For cloud multi-instance deployments, either use browser local storage (default client mode), or mount a managed cloud storage bucket/database (e.g. Firestore, PostgreSQL, Cloud SQL) via an API adapter.
+
+---
+
+## 10. Google Play Store Android Deployment & Pre-Publishing Audit
+
+ClimaCast is packaged with complete Capacitor Android native project infrastructure pre-configured for the Google Play Store.
+
+### 10.1 Automated Compliance Audit
+Before building or submitting, execute the built-in audit script to verify all 19 Google Play policy requirements:
+```bash
+npm run test:android
+```
+This tests for Target SDK 34+ compliance (API 36 configured), absence of `ACCESS_BACKGROUND_LOCATION`, in-app privacy policy accessibility, adaptive icon density sets, and Android App Bundle release configurations. For in-depth analysis, refer to [`docs/android_tests.md`](android_tests.md).
+
+### 10.2 Compiling the Production Android App Bundle (.aab)
+Google Play Console requires the `.aab` format:
+```bash
+# 1. Build production web bundle
+npm run build
+
+# 2. Synchronize web assets into Android project
+npx cap sync android
+
+# 3. Compile release AAB and debug APK
+cd android
+./gradlew bundleRelease assembleDebug
+cd ..
+```
+The output bundle will be located at:
+`android/app/build/outputs/bundle/release/app-release.aab`
+
+### 10.3 Signing the Release Bundle
+For production publishing, sign the AAB with your release keystore:
+```bash
+# Generate a release keystore (if you don't already have one)
+keytool -genkey -v -keystore climacast-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias climacast
+
+# Sign the Android App Bundle
+jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore climacast-release-key.jks android/app/build/outputs/bundle/release/app-release.aab climacast
+```
+
+### 10.4 Google Play Console Submission
+1. In Google Play Console, create an app titled **ClimaCast** (App, Free).
+2. Set Privacy Policy URL to `https://<your-domain>/privacy-policy.html`.
+3. In Data Safety, declare that location data is collected in the foreground for weather lookups, never shared with third parties, and can be cleared via in-app data deletion controls.
+4. Upload `app-release.aab` to Production or Internal Testing.

@@ -143,20 +143,22 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Build Native Android APK via Gradle
+      - name: Build Native Android APK & Google Play Store AAB via Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug bundleRelease --stacktrace
           cd ..
 
-      - name: Prepare Android APK for Release
+      - name: Prepare Android APK and Play Store AAB for Release
         shell: bash
         run: |
           mkdir -p android-artifact
           TAG="${{ needs.determine-version.outputs.release_tag }}"
           APK_SOURCE="android/app/build/outputs/apk/debug/app-debug.apk"
+          AAB_SOURCE="android/app/build/outputs/bundle/release/app-release.aab"
           TARGET_APK="android-artifact/climacast-android-${TAG}.apk"
+          TARGET_AAB="android-artifact/climacast-android-playstore-${TAG}.aab"
           if [ -f "$APK_SOURCE" ]; then
             cp "$APK_SOURCE" "$TARGET_APK"
             echo "✅ Android APK compiled successfully: $TARGET_APK"
@@ -165,8 +167,13 @@ jobs:
             echo "❌ APK build output not found at $APK_SOURCE"
             exit 1
           fi
+          if [ -f "$AAB_SOURCE" ]; then
+            cp "$AAB_SOURCE" "$TARGET_AAB"
+            echo "✅ Google Play Store AAB compiled successfully: $TARGET_AAB"
+            ls -lh "$TARGET_AAB"
+          fi
 
-      - name: Upload Android APK Artifact
+      - name: Upload Android APK and AAB Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -311,6 +318,7 @@ jobs:
           prerelease: false
           files: |
             release-artifacts/*.apk
+            release-artifacts/*.aab
             release-artifacts/*.zip
             release-artifacts/*.tar.gz
             release-artifacts/checksums.txt

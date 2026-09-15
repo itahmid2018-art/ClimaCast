@@ -460,6 +460,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </label>
                   </div>
                 </div>
+
+                {/* Google Play Data Safety & In-App Privacy Policy */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Privacy, Permissions &amp; Data Safety</span>
+                    </h3>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                      Google Play Verified
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 space-y-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-1.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-lg shrink-0 mt-0.5">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                          Location Privacy &amp; Zero-Tracking Guarantee
+                        </h4>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                          ClimaCast accesses device location strictly in the foreground when you tap the GPS button to retrieve accurate hyper-local forecasts and air quality observations. Your coordinates are never stored on external tracking servers, never used for advertising, and background location is permanently disabled.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                      <a
+                        href="/privacy-policy.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        <span>Read Full Privacy Policy</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        COPPA &amp; GDPR Compliant • Zero Ads
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
